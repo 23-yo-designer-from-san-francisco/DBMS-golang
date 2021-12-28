@@ -24,6 +24,11 @@ type User struct {
 	DB *sql.DB
 }
 
+//easyjson:json
+type ErrMsg struct {
+	Message string `json:"message,omitempty"`
+}
+
 func (user *User) Create(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	request.Nickname = ctx.UserValue("nickname").(string)
@@ -76,10 +81,11 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 
 func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
+	nickname := ctx.UserValue("nickname")
 	rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
 		"FROM users "+
 		"WHERE nickname=$1",
-		ctx.UserValue("nickname"))
+		nickname)
 	if rows.Next() {
 		rows.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
 		resp, err := easyjson.Marshal(request)
@@ -91,10 +97,9 @@ func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 		ctx.Response.SetStatusCode(200)
 		return
 	} else {
-		var b bytes.Buffer
-		b.Grow(100)
-		fmt.Fprintf(&b, "Can't find user with nickname %s", request.Nickname)
-		ctx.SetBody(b.Bytes())
+		errMsg := &ErrMsg{Message: fmt.Sprintf("Can't find user with nickname %s", nickname)}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
 		ctx.SetStatusCode(404)
 		ctx.SetContentType("application/json")
 	}
