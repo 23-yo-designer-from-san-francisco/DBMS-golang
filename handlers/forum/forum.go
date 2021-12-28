@@ -27,13 +27,17 @@ type Reqs []Req
 func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	easyjson.Unmarshal(ctx.PostBody(), request)
-	rows, err := forum.DB.Exec(`INSERT INTO forums (title, "user", slug) VALUES($1, $2, $3)`,
+	usr, err := forum.DB.Query(`SELECT nickname FROM users WHERE nickname=$1`, request.User)
+	if usr.Next() {
+		usr.Scan(&request.User)
+	}
+	_, err = forum.DB.Exec(`INSERT INTO forums (title, "user", slug) VALUES($1, $2, $3)`,
 		request.Title,
 		request.User,
 		request.Slug,
 	)
-	log.Println(rows)
-	log.Println(err)
+
+	log.Println(request.User)
 
 	if err, ok := err.(*pq.Error); ok {
 		fmt.Println(err.Code)
@@ -62,7 +66,8 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 
 		}
 	}
-	ctx.SetBody(ctx.PostBody())
+	res, _ := easyjson.Marshal(request)
+	ctx.SetBody(res)
 	ctx.SetStatusCode(201)
 	ctx.SetContentType("application/json")
 }
