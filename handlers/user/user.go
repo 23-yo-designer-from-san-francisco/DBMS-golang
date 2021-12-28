@@ -126,25 +126,31 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 	request.Nickname = nickname
 	var row *sql.Row
 	if len(request.Email) != 0 {
+		fmt.Println(request.Fullname)
 		row = user.DB.QueryRow("UPDATE users "+
-			"SET fullname=COALESCE($1, fullname), about=COALESCE($2, about), email = $3"+
-			"WHERE nickname=$4 RETURNING nickname",
+			"SET fullname=CASE WHEN $1 <> '' THEN $1 ELSE fullname END,"+
+			"about=CASE WHEN $2 <> '' THEN $2 ELSE about END,"+
+			"email = $3"+
+			"WHERE nickname=$4 RETURNING nickname, fullname, about, email",
 			request.Fullname,
 			request.About,
 			request.Email,
 			nickname,
 		)
-		err = row.Scan(&request.Nickname)
+		err = row.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
+		log.Println(request)
 	} else {
 		row = user.DB.QueryRow("UPDATE users "+
-			"SET fullname=COALESCE($1, fullname), about=COALESCE($2, about)"+
-			"WHERE nickname=$3 RETURNING nickname, email",
+			"SET fullname=CASE WHEN $1 <> '' THEN $1 ELSE fullname END,"+
+			"about=CASE WHEN $2 <> '' THEN $2 ELSE about END "+
+			"WHERE nickname=$3 RETURNING nickname, fullname, about, email",
 			request.Fullname,
 			request.About,
 			nickname,
 		)
-		err = row.Scan(&request.Nickname, &request.Email)
+		err = row.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
 	}
+	log.Println(err)
 	if err, ok := err.(*pq.Error); ok {
 		switch err.Code {
 		case "23505":
