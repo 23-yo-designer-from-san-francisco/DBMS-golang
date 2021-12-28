@@ -34,7 +34,7 @@ func main() {
 	r.GET("/forum/{slug}/details", forum.Details)
 	r.POST("/forum/{slug}/create", forum.CreateThread)
 	r.GET("/forum/{slug}/users", forum.Users)
-	r.GET("/forum/{slug}/threads", forum.Threads)
+	r.GET("/forum/{slug}/threads", forum.GetThreads)
 
 	r.GET("/post/{id}/details", post.Details)
 	r.POST("/post/{id}/details", post.UpdateMessage)

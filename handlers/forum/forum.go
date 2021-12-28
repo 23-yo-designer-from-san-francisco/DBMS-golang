@@ -134,6 +134,6 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 
 }
 
-func (forum *Forum) Threads(ctx *fasthttp.RequestCtx) {
+func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 
 }
