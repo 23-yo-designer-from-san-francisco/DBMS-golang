@@ -106,18 +106,36 @@ func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 
 func (user *User) Update(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
-	request.Nickname = ctx.UserValue("nickname").(string)
-	easyjson.Unmarshal(ctx.PostBody(), request)
+	nickname := ctx.UserValue("nickname").(string)
+	err := easyjson.Unmarshal(ctx.PostBody(), request)
+	if err != nil {
+		log.Println(err)
+	}
+	if len(request.About) == 0 && len(request.Email) == 0 && len(request.Nickname) == 0 && len(request.Fullname) == 0 {
+		log.Println("EMPTY")
+		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email FROM users WHERE nickname=$1", nickname)
+		rows.Next()
+		fmt.Println(rows)
+		rows.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
+		defer rows.Close()
+		response, _ := easyjson.Marshal(request)
+		ctx.SetBody(response)
+		log.Println(nickname)
+		ctx.SetStatusCode(200)
+		ctx.SetContentType("application/json")
+		return
+	}
+	request.Nickname = nickname
 	result, err := user.DB.Exec("UPDATE users "+
 		"SET fullname=$1, about=$2, email=$3"+
 		"WHERE nickname=$4",
 		request.Fullname,
 		request.About,
 		request.Email,
-		request.Nickname,
+		nickname,
 	)
 	if err != nil { // Exists
-		errMsg := &ErrMsg{Message: fmt.Sprintf("This email is already registered by user: %s", request.Nickname)}
+		errMsg := &ErrMsg{Message: fmt.Sprintf("This email is already registered by user: %s", nickname)}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
 		ctx.SetStatusCode(409)
@@ -125,7 +143,7 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	if res, _ := result.RowsAffected(); res == 0 { // No such user
-		errMsg := &ErrMsg{Message: fmt.Sprintf("Can't find user with nickname %s", request.Nickname)}
+		errMsg := &ErrMsg{Message: fmt.Sprintf("Can't find user with nickname %s", nickname)}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
 		ctx.SetStatusCode(404)
