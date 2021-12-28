@@ -86,6 +86,13 @@ func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
 		ctx.SetContentType("application/json")
 		ctx.Response.SetStatusCode(200)
 		return
+	} else {
+		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find forum with slug:  %s", request.Slug)}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
+		return
 	}
 }
 
