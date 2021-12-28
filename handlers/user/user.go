@@ -3,6 +3,7 @@ package user
 import (
 	"database/sql"
 	"fmt"
+	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
@@ -112,37 +113,50 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 		log.Println(err)
 	}
 	if len(request.About) == 0 && len(request.Email) == 0 && len(request.Nickname) == 0 && len(request.Fullname) == 0 {
-		log.Println("EMPTY")
 		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email FROM users WHERE nickname=$1", nickname)
 		rows.Next()
-		fmt.Println(rows)
 		rows.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
 		defer rows.Close()
 		response, _ := easyjson.Marshal(request)
 		ctx.SetBody(response)
-		log.Println(nickname)
 		ctx.SetStatusCode(200)
 		ctx.SetContentType("application/json")
 		return
 	}
 	request.Nickname = nickname
-	result, err := user.DB.Exec("UPDATE users "+
-		"SET fullname=$1, about=$2, email=$3"+
-		"WHERE nickname=$4",
-		request.Fullname,
-		request.About,
-		request.Email,
-		nickname,
-	)
-	if err != nil { // Exists
-		errMsg := &ErrMsg{Message: fmt.Sprintf("This email is already registered by user: %s", nickname)}
-		response, _ := easyjson.Marshal(errMsg)
-		ctx.SetBody(response)
-		ctx.SetStatusCode(409)
-		ctx.SetContentType("application/json")
-		return
+	var row *sql.Row
+	if len(request.Email) != 0 {
+		row = user.DB.QueryRow("UPDATE users "+
+			"SET fullname=COALESCE($1, fullname), about=COALESCE($2, about), email = $3"+
+			"WHERE nickname=$4 RETURNING nickname",
+			request.Fullname,
+			request.About,
+			request.Email,
+			nickname,
+		)
+		err = row.Scan(&request.Nickname)
+	} else {
+		row = user.DB.QueryRow("UPDATE users "+
+			"SET fullname=COALESCE($1, fullname), about=COALESCE($2, about)"+
+			"WHERE nickname=$3 RETURNING nickname, email",
+			request.Fullname,
+			request.About,
+			nickname,
+		)
+		err = row.Scan(&request.Nickname, &request.Email)
 	}
-	if res, _ := result.RowsAffected(); res == 0 { // No such user
+	if err, ok := err.(*pq.Error); ok {
+		switch err.Code {
+		case "23505":
+			errMsg := &ErrMsg{Message: fmt.Sprintf("This email is already registered by user: %s", nickname)}
+			response, _ := easyjson.Marshal(errMsg)
+			ctx.SetBody(response)
+			ctx.SetStatusCode(409)
+			ctx.SetContentType("application/json")
+			return
+		}
+	}
+	if err == sql.ErrNoRows { // No such user
 		errMsg := &ErrMsg{Message: fmt.Sprintf("Can't find user with nickname %s", nickname)}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
