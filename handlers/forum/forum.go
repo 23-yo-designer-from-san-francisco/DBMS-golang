@@ -68,7 +68,20 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
-
+	request := &Req{}
+	request.Slug = ctx.UserValue("slug").(string)
+	rows, _ := forum.DB.Query(`SELECT title, "user" `+
+		"FROM forums "+
+		"WHERE slug=$1",
+		request.Slug)
+	if rows.Next() {
+		rows.Scan(&request.Title, &request.User)
+		resp, _ := easyjson.Marshal(request)
+		ctx.Response.SetBody(resp)
+		ctx.SetContentType("application/json")
+		ctx.Response.SetStatusCode(200)
+		return
+	}
 }
 
 func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
