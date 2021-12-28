@@ -1,7 +1,6 @@
 package user
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"github.com/mailru/easyjson"
@@ -117,20 +116,18 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 		request.Email,
 		request.Nickname,
 	)
-	if err != nil {
-		var b bytes.Buffer
-		b.Grow(100)
-		fmt.Fprintf(&b, "Can't find user with nickname %s", request.Nickname)
-		ctx.SetBody(b.Bytes())
+	if err != nil { // Exists
+		errMsg := &ErrMsg{Message: fmt.Sprintf("This email is already registered by user: %s", request.Nickname)}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
 		ctx.SetStatusCode(409)
 		ctx.SetContentType("application/json")
 		return
 	}
-	if res, _ := result.RowsAffected(); res == 0 {
-		var b bytes.Buffer
-		b.Grow(100)
-		fmt.Fprintf(&b, "Can't find user with nickname %s", request.Nickname)
-		ctx.SetBody(b.Bytes())
+	if res, _ := result.RowsAffected(); res == 0 { // No such user
+		errMsg := &ErrMsg{Message: fmt.Sprintf("Can't find user with nickname %s", request.Nickname)}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
 		ctx.SetStatusCode(404)
 		ctx.SetContentType("application/json")
 		return
