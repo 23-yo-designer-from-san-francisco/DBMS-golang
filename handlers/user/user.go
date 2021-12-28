@@ -76,13 +76,12 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 
 func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
-	request.Nickname = ctx.UserValue("nickname").(string)
-	rows, _ := user.DB.Query("SELECT fullname, about, email "+
+	rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
 		"FROM users "+
 		"WHERE nickname=$1",
-		request.Nickname)
+		ctx.UserValue("nickname"))
 	if rows.Next() {
-		rows.Scan(&request.Fullname, &request.About, &request.Email)
+		rows.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
 		resp, err := easyjson.Marshal(request)
 		if err != nil {
 			fmt.Println(err)
