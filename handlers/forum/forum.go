@@ -123,7 +123,6 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 	if err != nil {
 		log.Println(err)
 	}
-	log.Println(thr.ID)
 
 	res, _ := easyjson.Marshal(thr)
 	ctx.SetBody(res)

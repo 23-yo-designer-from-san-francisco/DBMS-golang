@@ -20,12 +20,6 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer func(db *sql.DB) {
-		err := db.Close()
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}(db)
 
 	r := router.New()
 

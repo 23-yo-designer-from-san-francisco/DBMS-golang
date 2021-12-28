@@ -2,6 +2,7 @@ package user
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
@@ -86,9 +87,10 @@ func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 		"FROM users "+
 		"WHERE nickname=$1",
 		nickname)
+	defer rows.Close()
 	if rows.Next() {
 		rows.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
-		resp, err := easyjson.Marshal(request)
+		resp, err := json.Marshal(request)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -98,7 +100,7 @@ func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 		return
 	} else {
 		errMsg := &ErrMsg{Message: fmt.Sprintf("Can't find user with nickname %s", nickname)}
-		response, _ := easyjson.Marshal(errMsg)
+		response, _ := json.Marshal(errMsg)
 		ctx.SetBody(response)
 		ctx.SetStatusCode(404)
 		ctx.SetContentType("application/json")
