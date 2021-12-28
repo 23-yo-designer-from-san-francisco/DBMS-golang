@@ -54,7 +54,6 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 	)
 
 	if err, ok := err.(*pq.Error); ok {
-		fmt.Println(err.Code)
 		switch err.Code {
 		case "23505":
 			rows, _ := forum.DB.Query(`SELECT slug, title, "user"`+
@@ -146,13 +145,6 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 		limitQueryArg = " LIMIT " + string(limit)
 	} else {
 		limitQueryArg = ""
-	}
-	var sinceQueryArg string
-	if len(since) != 0 {
-		sinceQueryArg = " AND created <= '" + string(since) + "'" //thisisunsafe
-		log.Println(sinceQueryArg)
-	} else {
-		sinceQueryArg = ""
 	}
 	var rows *sql.Rows
 	var err error
