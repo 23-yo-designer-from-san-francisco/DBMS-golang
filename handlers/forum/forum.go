@@ -8,6 +8,7 @@ import (
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
+	"time"
 )
 
 type Forum struct {
@@ -19,6 +20,17 @@ type Req struct {
 	Slug  string `json:"slug,omitempty"`
 	Title string `json:"title,omitempty"`
 	User  string `json:"user,omitempty"`
+}
+
+//easyjson:json
+type ThreadReq struct {
+	ID      int64     `json:"id,omitempty"`
+	Author  string    `json:"author,omitempty"`
+	Created time.Time `json:"created,omitempty"`
+	Forum   string    `json:"forum,omitempty"`
+	Message string    `json:"message,omitempty"`
+	Title   string    `json:"title,omitempty"`
+	Slug    string    `json:"slug,omitempty"`
 }
 
 //easyjson:json
@@ -36,8 +48,6 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 		request.User,
 		request.Slug,
 	)
-
-	log.Println(request.User)
 
 	if err, ok := err.(*pq.Error); ok {
 		fmt.Println(err.Code)
@@ -63,7 +73,6 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 			ctx.SetStatusCode(404)
 			ctx.SetContentType("application/json")
 			return
-
 		}
 	}
 	res, _ := easyjson.Marshal(request)
@@ -97,7 +106,28 @@ func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
+	SLUG := ctx.UserValue("slug").(string)
+	thr := &ThreadReq{}
+	easyjson.Unmarshal(ctx.PostBody(), thr)
+	row := forum.DB.QueryRow(`INSERT INTO threads (title,author, forum, message, created, slug) 
+		VALUES($1, $2, $3, $4, $5, $6) RETURNING id`,
+		thr.Title,
+		thr.Author,
+		thr.Forum,
+		thr.Message,
+		thr.Created,
+		SLUG,
+	)
+	err := row.Scan(&thr.ID)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println(thr.ID)
 
+	res, _ := easyjson.Marshal(thr)
+	ctx.SetBody(res)
+	ctx.SetStatusCode(201)
+	ctx.SetContentType("application/json")
 }
 
 func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
