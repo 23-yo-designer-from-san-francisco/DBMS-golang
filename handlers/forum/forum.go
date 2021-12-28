@@ -141,12 +141,6 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	desc := string(ctx.QueryArgs().Peek("desc"))
 	limit := ctx.QueryArgs().Peek("limit")
 	since := ctx.QueryArgs().Peek("since")
-	var descQueryArg string
-	if desc == "true" {
-		descQueryArg = "DESC"
-	} else {
-		descQueryArg = ""
-	}
 	var limitQueryArg string
 	if len(limit) != 0 {
 		limitQueryArg = " LIMIT " + string(limit)
@@ -160,9 +154,26 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	} else {
 		sinceQueryArg = ""
 	}
-	if len(desc) != 0 || len(limit) != 0 {
-		rows, err := forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
-			"FROM threads WHERE forum=$1 "+sinceQueryArg+" ORDER BY created "+descQueryArg+limitQueryArg, SLUG)
+	var rows *sql.Rows
+	var err error
+	if len(limit) != 0 {
+		if len(since) == 0 {
+			if desc == "true" {
+				rows, err = forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+					"FROM threads WHERE forum=$1 ORDER BY created DESC "+limitQueryArg, SLUG)
+			} else {
+				rows, err = forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+					"FROM threads WHERE forum=$1 ORDER BY created ASC "+limitQueryArg, SLUG)
+			}
+		} else {
+			if desc == "true" {
+				rows, err = forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+					"FROM threads WHERE forum=$1 AND created <= $2 ORDER BY created DESC "+limitQueryArg, SLUG, since)
+			} else {
+				rows, err = forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+					"FROM threads WHERE forum=$1 AND created >= $2 ORDER BY created ASC "+limitQueryArg, SLUG, since)
+			}
+		}
 		threads := make(ThreadsReq, 0)
 		if err != nil {
 			log.Fatalln(err)
