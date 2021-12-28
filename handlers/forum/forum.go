@@ -23,6 +23,9 @@ type Req struct {
 }
 
 //easyjson:json
+type Reqs []Req
+
+//easyjson:json
 type ThreadReq struct {
 	ID      int64     `json:"id,omitempty"`
 	Author  string    `json:"author,omitempty"`
@@ -35,7 +38,7 @@ type ThreadReq struct {
 }
 
 //easyjson:json
-type Reqs []Req
+type ThreadsReq []ThreadReq
 
 func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
@@ -136,6 +139,53 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 
 func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	SLUG := ctx.UserValue("slug").(string)
+	desc := string(ctx.QueryArgs().Peek("desc"))
+	limit := ctx.QueryArgs().Peek("limit")
+	var descQueryArg string
+	if desc == "true" {
+		descQueryArg = "DESC"
+	} else {
+		descQueryArg = ""
+	}
+	var limitQueryArg string
+	if len(limit) != 0 {
+		limitQueryArg = " LIMIT " + string(limit)
+	} else {
+		limitQueryArg = ""
+	}
+	if len(desc) != 0 || len(limit) != 0 {
+		rows, err := forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+			"FROM threads WHERE slug=$1 ORDER BY created "+descQueryArg+limitQueryArg, SLUG)
+		threads := make(ThreadsReq, 0)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		defer rows.Close()
+		found := false
+		for rows.Next() {
+			found = true
+			thr := &ThreadReq{}
+			rows.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &thr.Slug, &thr.Created)
+			threads = append(threads, *thr)
+		}
+		if !found {
+			errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find forum by slug: %s", SLUG)}
+			response, _ := easyjson.Marshal(errMsg)
+			ctx.SetBody(response)
+			ctx.SetStatusCode(404)
+			ctx.SetContentType("application/json")
+			return
+		}
+		resp, err := easyjson.Marshal(threads)
+		if err != nil {
+			fmt.Println(err)
+		}
+		ctx.Response.SetBody(resp)
+		ctx.SetContentType("application/json")
+		ctx.Response.SetStatusCode(409)
+		return
+	}
+
 	thr := &ThreadReq{}
 	usr, _ := forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
 		"FROM threads WHERE slug=$1", SLUG)

@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	connStr := "postgres://root:root@localhost/postgres?sslmode=disable"
+	connStr := "dbname=postgres sslmode=disable"
 	var err error
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
