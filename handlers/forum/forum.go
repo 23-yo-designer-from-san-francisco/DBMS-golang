@@ -31,6 +31,7 @@ type ThreadReq struct {
 	Message string    `json:"message,omitempty"`
 	Title   string    `json:"title,omitempty"`
 	Slug    string    `json:"slug,omitempty"`
+	Votes   int       `json:"votes,omitempty"`
 }
 
 //easyjson:json
@@ -135,5 +136,17 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
-
+	SLUG := ctx.UserValue("slug").(string)
+	thr := &ThreadReq{}
+	usr, _ := forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+		"FROM threads WHERE slug=$1", SLUG)
+	if usr.Next() {
+		usr.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &thr.Slug, &thr.Created)
+	} else {
+		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find forum by slug: %s", SLUG)}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
+	}
 }
