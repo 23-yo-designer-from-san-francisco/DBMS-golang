@@ -3,7 +3,6 @@ package user
 import (
 	"bytes"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
@@ -28,11 +27,8 @@ type User struct {
 func (user *User) Create(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	request.Nickname = ctx.UserValue("nickname").(string)
-	err := json.Unmarshal(ctx.PostBody(), &request)
-	if err != nil {
-		log.Println(err)
-	}
-	_, err = user.DB.Exec("INSERT INTO users (nickname, fullname, about, email) "+
+	easyjson.Unmarshal(ctx.PostBody(), request)
+	_, err := user.DB.Exec("INSERT INTO users (nickname, fullname, about, email) "+
 		"VALUES ($1, $2, $3, $4)",
 		request.Nickname,
 		request.Fullname,
@@ -40,7 +36,6 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 		request.Email,
 	)
 	if err != nil {
-		log.Println(err)
 		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
 			"FROM users "+
 			"WHERE nickname=$1 or email=$2",
@@ -107,5 +102,37 @@ func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 }
 
 func (user *User) Update(ctx *fasthttp.RequestCtx) {
-
+	request := &Req{}
+	request.Nickname = ctx.UserValue("nickname").(string)
+	easyjson.Unmarshal(ctx.PostBody(), request)
+	result, err := user.DB.Exec("UPDATE users "+
+		"SET fullname=$1, about=$2, email=$3"+
+		"WHERE nickname=$4",
+		request.Fullname,
+		request.About,
+		request.Email,
+		request.Nickname,
+	)
+	if err != nil {
+		var b bytes.Buffer
+		b.Grow(100)
+		fmt.Fprintf(&b, "Can't find user with nickname %s", request.Nickname)
+		ctx.SetBody(b.Bytes())
+		ctx.SetStatusCode(409)
+		ctx.SetContentType("application/json")
+		return
+	}
+	if res, _ := result.RowsAffected(); res == 0 {
+		var b bytes.Buffer
+		b.Grow(100)
+		fmt.Fprintf(&b, "Can't find user with nickname %s", request.Nickname)
+		ctx.SetBody(b.Bytes())
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
+		return
+	}
+	ctx.Response.SetStatusCode(200)
+	resp, _ := easyjson.Marshal(request)
+	ctx.Response.SetBody(resp)
+	ctx.SetContentType("application/json")
 }

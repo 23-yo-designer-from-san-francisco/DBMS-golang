@@ -28,6 +28,8 @@ func main() {
 	}(db)
 
 	r := router.New()
+
+	forum := &forum.Forum{DB: db}
 	r.POST("/forum/create", forum.Create)
 	r.GET("/forum/{slug}/details", forum.Details)
 	r.POST("/forum/{slug}/create", forum.CreateThread)
