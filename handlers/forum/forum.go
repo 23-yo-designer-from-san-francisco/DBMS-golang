@@ -1,7 +1,10 @@
 package forum
 
 import (
+	"DBMS/handlers/user"
 	"database/sql"
+	"fmt"
+	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
@@ -24,16 +27,41 @@ type Reqs []Req
 func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	easyjson.Unmarshal(ctx.PostBody(), request)
-	_, err := forum.DB.Exec("INSERT INTO forums (title, user, slug) "+
-		"VALUES($1, $2, $3)",
+	rows, err := forum.DB.Exec(`INSERT INTO forums (title, "user", slug) VALUES($1, $2, $3)`,
 		request.Title,
 		request.User,
 		request.Slug,
 	)
-	if err != nil {
-		log.Println(err)
-	}
+	log.Println(rows)
+	log.Println(err)
 
+	if err, ok := err.(*pq.Error); ok {
+		fmt.Println(err.Code)
+		switch err.Code {
+		case "23505":
+			rows, _ := forum.DB.Query(`SELECT slug, title, "user"`+
+				"FROM forums "+
+				"WHERE slug=$1",
+				request.Slug)
+			if rows.Next() {
+				rows.Scan(&request.Slug, &request.Title, &request.User)
+			}
+			rows.Close()
+			result, _ := easyjson.Marshal(request)
+			ctx.SetBody(result)
+			ctx.SetStatusCode(409)
+			ctx.SetContentType("application/json")
+			return
+		case "23503":
+			errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find user with nickname %s", request.User)}
+			response, _ := easyjson.Marshal(errMsg)
+			ctx.SetBody(response)
+			ctx.SetStatusCode(404)
+			ctx.SetContentType("application/json")
+			return
+
+		}
+	}
 	ctx.SetBody(ctx.PostBody())
 	ctx.SetStatusCode(201)
 	ctx.SetContentType("application/json")
