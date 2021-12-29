@@ -157,7 +157,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 			return
 		}
 	}
-
+	thr.Forum = SWAG
 	res, _ := easyjson.Marshal(thr)
 	ctx.SetBody(res)
 	ctx.SetStatusCode(201)
