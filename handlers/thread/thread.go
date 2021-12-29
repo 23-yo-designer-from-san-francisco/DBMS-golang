@@ -2,7 +2,6 @@ package thread
 
 import (
 	"database/sql"
-	"fmt"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
@@ -49,16 +48,13 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	log.Println(forumTitle)
 	if len(forumTitle) != 0 {
-		log.Println(forumTitle)
 		threads := &ResThreads{}
 		result := make(ResThreads, 0)
 		if err := easyjson.Unmarshal(ctx.PostBody(), threads); err != nil {
 			log.Println(err)
 		}
 		for _, thr := range *threads {
-			fmt.Println(thr)
 			row := thread.DB.QueryRow("INSERT INTO posts (author, message, forum, thread) "+
 				"VALUES ($1, $2, $3, $4) RETURNING id, created",
 				thr.Author,

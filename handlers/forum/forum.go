@@ -109,8 +109,12 @@ func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
+	SLUG := ctx.UserValue("slug").(string)
 	thr := &ThreadReq{}
 	easyjson.Unmarshal(ctx.PostBody(), thr)
+	if len(thr.Slug) != 0 {
+		SLUG = thr.Slug
+	}
 	row := forum.DB.QueryRow(`INSERT INTO threads (title,author, forum, message, created, slug) 
 		VALUES($1, $2, $3, $4, $5, $6) RETURNING id`,
 		thr.Title,
@@ -118,7 +122,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		thr.Forum,
 		thr.Message,
 		thr.Created,
-		thr.Slug,
+		SLUG,
 	)
 	err := row.Scan(&thr.ID)
 	if err != nil {
