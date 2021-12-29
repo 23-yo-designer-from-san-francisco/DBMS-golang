@@ -125,8 +125,22 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		SLUG,
 	)
 	err := row.Scan(&thr.ID)
-	if err != nil {
-		log.Println(err)
+	if err, ok := err.(*pq.Error); ok {
+		log.Println(err.Code)
+		log.Println(err.Message)
+		switch err.Code {
+		case "23505":
+			thread := &ThreadReq{}
+			forum.DB.QueryRow("SELECT author, created, forum, id, message, slug, title "+
+				"FROM threads "+
+				"WHERE slug=$1", SLUG).Scan(&thread.Author,
+				&thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
+			res, _ := easyjson.Marshal(thread)
+			ctx.SetBody(res)
+			ctx.SetStatusCode(409)
+			ctx.SetContentType("application/json")
+			return
+		}
 	}
 
 	res, _ := easyjson.Marshal(thr)
