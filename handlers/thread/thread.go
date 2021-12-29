@@ -32,17 +32,21 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 	SLUG := ctx.UserValue("slug_or_id").(string)
 	id, err := strconv.Atoi(SLUG)
 	var row *sql.Row
-	if err == nil {
-		row = thread.DB.QueryRow(`SELECT title, forum from threads where id=$1`, id)
-	} else {
-		id = -1
-		row = thread.DB.QueryRow(`SELECT title, forum from threads where slug=$1`, SLUG)
-	}
 	var forumTitle string
 	var forumSwag string
-	err = row.Scan(&forumTitle, &forumSwag)
-	if err != nil {
-		log.Fatalln(err)
+	if err == nil {
+		row = thread.DB.QueryRow(`SELECT title, forum from threads where id=$1`, id)
+		err = row.Scan(&forumTitle, &forumSwag)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	} else {
+		id = -1
+		row = thread.DB.QueryRow(`SELECT title, forum, id from threads where slug=$1`, SLUG)
+		err = row.Scan(&forumTitle, &forumSwag, &id)
+		if err != nil {
+			log.Fatalln(err)
+		}
 	}
 
 	log.Println(forumTitle)
