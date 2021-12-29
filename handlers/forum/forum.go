@@ -109,22 +109,30 @@ func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
-	SLUG := ctx.UserValue("slug").(string)
+	SLUG := ctx.UserValue("slug").(string) // SWAG форума, который точно должен быть
 	thr := &ThreadReq{}
 	easyjson.Unmarshal(ctx.PostBody(), thr)
-	if len(thr.Slug) != 0 {
-		SLUG = thr.Slug
+
+	var SWAG string
+	log.Println("SLUG")
+	log.Println(SLUG)
+	err := forum.DB.QueryRow(`SELECT slug FROM forums WHERE slug=$1`, SLUG).Scan(&SWAG)
+	log.Println("SWAGGA")
+	log.Println(SWAG)
+	if err != nil {
+		log.Println(err)
 	}
+
 	row := forum.DB.QueryRow(`INSERT INTO threads (title,author, forum, message, created, slug) 
-		VALUES($1, $2, $3, $4, $5, $6) RETURNING id`,
+		VALUES($1, $2, $3, $4, $5, CASE WHEN $6 <> '' THEN $6 ELSE NULL END) RETURNING id`,
 		thr.Title,
 		thr.Author,
-		thr.Forum,
+		SWAG,
 		thr.Message,
 		thr.Created,
-		SLUG,
+		thr.Slug,
 	)
-	err := row.Scan(&thr.ID)
+	err = row.Scan(&thr.ID)
 	if err, ok := err.(*pq.Error); ok {
 		log.Println(err.Code)
 		log.Println(err.Message)
@@ -133,7 +141,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 			thread := &ThreadReq{}
 			forum.DB.QueryRow("SELECT author, created, forum, id, message, slug, title "+
 				"FROM threads "+
-				"WHERE slug=$1", SLUG).Scan(&thread.Author,
+				"WHERE slug=$1", thr.Slug).Scan(&thread.Author,
 				&thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
 			res, _ := easyjson.Marshal(thread)
 			ctx.SetBody(res)
