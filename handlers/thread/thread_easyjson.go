@@ -103,7 +103,7 @@ func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *ResThread) 
 		}
 		switch key {
 		case "id":
-			out.Id = int(in.Int())
+			out.ID = int(in.Int())
 		case "parent":
 			out.Parent = int(in.Int())
 		case "author":
@@ -117,9 +117,7 @@ func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *ResThread) 
 		case "thread":
 			out.Thread = int(in.Int())
 		case "created":
-			if data := in.Raw(); in.Ok() {
-				in.AddError((out.Created).UnmarshalJSON(data))
-			}
+			out.Created = string(in.String())
 		default:
 			in.SkipRecursive()
 		}
@@ -134,11 +132,11 @@ func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in ResThread)
 	out.RawByte('{')
 	first := true
 	_ = first
-	if in.Id != 0 {
+	if in.ID != 0 {
 		const prefix string = ",\"id\":"
 		first = false
 		out.RawString(prefix[1:])
-		out.Int(int(in.Id))
+		out.Int(int(in.ID))
 	}
 	if in.Parent != 0 {
 		const prefix string = ",\"parent\":"
@@ -200,7 +198,7 @@ func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in ResThread)
 		}
 		out.Int(int(in.Thread))
 	}
-	if true {
+	if in.Created != "" {
 		const prefix string = ",\"created\":"
 		if first {
 			first = false
@@ -208,7 +206,7 @@ func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in ResThread)
 		} else {
 			out.RawString(prefix)
 		}
-		out.Raw((in.Created).MarshalJSON())
+		out.String(string(in.Created))
 	}
 	out.RawByte('}')
 }

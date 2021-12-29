@@ -1,56 +1,100 @@
 package thread
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
-	"time"
+	"strconv"
 )
 
 //easyjson:json
 type ResThread struct {
-	Id       int       `json:"id,omitempty"`
-	Parent   int       `json:"parent,omitempty"`
-	Author   string    `json:"author,omitempty"`
-	Message  string    `json:"message,omitempty"`
-	IsEdited bool      `json:"isEdited,omitempty"`
-	Forum    string    `json:"forum,omitempty"`
-	Thread   int       `json:"thread,omitempty"`
-	Created  time.Time `json:"created,omitempty"`
+	ID       int    `json:"id,omitempty"`
+	Parent   int    `json:"parent,omitempty"`
+	Author   string `json:"author,omitempty"`
+	Message  string `json:"message,omitempty"`
+	IsEdited bool   `json:"isEdited,omitempty"`
+	Forum    string `json:"forum,omitempty"`
+	Thread   int    `json:"thread,omitempty"`
+	Created  string `json:"created,omitempty"`
+}
+
+type Thread struct {
+	DB *sql.DB
 }
 
 //easyjson:json
 type ResThreads []ResThread
 
-func Create(ctx *fasthttp.RequestCtx) {
-	//SLUG := ctx.UserValue("slug_or_id").(string)
-	threads := &ResThreads{}
-	log.Println(string(ctx.PostBody()))
-
-	if err := easyjson.Unmarshal(ctx.PostBody(), threads); err != nil {
-		log.Println(err)
+func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
+	SLUG := ctx.UserValue("slug_or_id").(string)
+	id, err := strconv.Atoi(SLUG)
+	var row *sql.Row
+	if err == nil {
+		row = thread.DB.QueryRow(`SELECT title, forum from threads where id=$1`, id)
+	} else {
+		id = -1
+		row = thread.DB.QueryRow(`SELECT title, forum from threads where slug=$1`, SLUG)
 	}
-	for thread := range *threads {
-		fmt.Println(thread)
+	var forumTitle string
+	var forumSwag string
+	err = row.Scan(&forumTitle, &forumSwag)
+	if err != nil {
+		log.Fatalln(err)
 	}
-	ctx.SetBody([]byte("[]"))
-	ctx.SetStatusCode(201)
-	ctx.SetContentType("application/json")
+
+	log.Println(forumTitle)
+	if len(forumTitle) != 0 {
+		log.Println(forumTitle)
+		threads := &ResThreads{}
+		result := make(ResThreads, 0)
+		if err := easyjson.Unmarshal(ctx.PostBody(), threads); err != nil {
+			log.Println(err)
+		}
+		for _, thr := range *threads {
+			fmt.Println(thr)
+			row := thread.DB.QueryRow("INSERT INTO posts (author, message, forum, thread) "+
+				"VALUES ($1, $2, $3, $4) RETURNING id, created",
+				thr.Author,
+				thr.Message,
+				forumTitle,
+				id,
+			)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			err := row.Scan(&thr.ID, &thr.Created)
+			thr.Forum = forumSwag
+			if err != nil {
+				log.Fatalln(err)
+			}
+			thr.Thread = id
+			result = append(result, thr)
+		}
+		res, _ := easyjson.Marshal(result)
+		ctx.SetBody(res)
+		ctx.SetStatusCode(201)
+		ctx.SetContentType("application/json")
+		return
+	} else {
+
+	}
 }
 
-func Details(ctx *fasthttp.RequestCtx) {
+func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 
 }
 
-func Update(ctx *fasthttp.RequestCtx) {
+func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 
 }
 
-func Messages(ctx *fasthttp.RequestCtx) {
+func (thread *Thread) Messages(ctx *fasthttp.RequestCtx) {
 
 }
 
-func Vote(ctx *fasthttp.RequestCtx) {
+func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 
 }

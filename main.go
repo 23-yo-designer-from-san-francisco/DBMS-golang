@@ -36,6 +36,7 @@ func main() {
 	r.POST("/service/clear", service.Clear)
 	r.GET("/service/status", service.Status)
 
+	thread := &thread.Thread{DB: db}
 	r.POST("/thread/{slug_or_id}/create", thread.Create)
 	r.GET("/thread/{slug_or_id}/details", thread.Details)
 	r.POST("/thread/{slug_or_id}/details", thread.Update)
