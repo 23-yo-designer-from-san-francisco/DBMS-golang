@@ -140,6 +140,13 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 			ctx.SetStatusCode(409)
 			ctx.SetContentType("application/json")
 			return
+		case "23503":
+			errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find thread author by nickname: %s", thr.Author)}
+			response, _ := easyjson.Marshal(errMsg)
+			ctx.SetBody(response)
+			ctx.SetStatusCode(404)
+			ctx.SetContentType("application/json")
+			return
 		}
 	}
 
