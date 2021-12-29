@@ -119,8 +119,14 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 	err := forum.DB.QueryRow(`SELECT slug FROM forums WHERE slug=$1`, SLUG).Scan(&SWAG)
 	log.Println("SWAGGA")
 	log.Println(SWAG)
-	if err != nil {
+	if err == sql.ErrNoRows {
 		log.Println(err)
+		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find thread forum by slug: %s", SWAG)}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
+		return
 	}
 
 	row := forum.DB.QueryRow(`INSERT INTO threads (title,author, forum, message, created, slug) 
