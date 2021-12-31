@@ -20,7 +20,10 @@ type Res struct {
 }
 
 func (service *Service) Clear(ctx *fasthttp.RequestCtx) {
-
+	_, err := service.DB.Exec(`TRUNCATE users, forums, threads, posts, votes, forum_users;`)
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func (service *Service) Status(ctx *fasthttp.RequestCtx) {
