@@ -203,14 +203,49 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 			args = append(args, limit)
 		}
 	case "tree":
-		//var sinceQuery string
-		//var descQuery string
-		//var limitSQL string
-		//argc := 2
-		//
-		//var args []interface{}
-		//args = append(args, slugOrID)
+		var sinceQuery string
+		var descQuery string
+		var limitSQL string
+		query = `SELECT p.id, p.thread, p.created,
+				p.message, COALESCE(p.parent, 0), p.author, p.forum FROM posts p JOIN threads thr ON p.thread = thr.id WHERE `
+		ID, err := strconv.Atoi(slugOrID)
+		if err == nil {
+			query += "thr.ID = $1 "
+			args = append(args, ID)
+		} else {
+			query += "thr.slug = $1 "
+			args = append(args, slugOrID)
+		}
+		argc := 2
 
+		if len(since) != 0 {
+			sinceQuery += " AND (path "
+			if desc == "true" {
+				sinceQuery += " < "
+			} else {
+				sinceQuery += " > "
+			}
+			sinceQuery += "(SELECT path FROM posts WHERE id=$" + strconv.Itoa(argc) + ")) "
+			argc++
+		} else {
+			sinceQuery = ""
+		}
+
+		if desc == "true" {
+			descQuery = " DESC "
+		} else {
+			descQuery = ""
+		}
+
+		if len(limit) != 0 {
+			limitSQL = " LIMIT $" + strconv.Itoa(argc)
+			lim, _ := strconv.Atoi(limit)
+			args = append(args, lim)
+			argc++
+		} else {
+			limitSQL = ""
+		}
+		query += sinceQuery + `ORDER BY path` + descQuery + limitSQL
 	}
 	log.Println(query, args)
 	rows, err := thread.DB.Query(query, args...)
