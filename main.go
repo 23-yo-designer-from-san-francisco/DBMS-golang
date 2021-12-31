@@ -40,7 +40,7 @@ func main() {
 	r.POST("/thread/{slug_or_id}/create", thread.Create)
 	r.GET("/thread/{slug_or_id}/details", thread.Details)
 	r.POST("/thread/{slug_or_id}/details", thread.Update)
-	r.GET("/thread/{slug_or_id}/posts", thread.Messages)
+	r.GET("/thread/{slug_or_id}/posts", thread.GetPosts)
 	r.POST("/thread/{slug_or_id}/vote", thread.Vote)
 
 	user := &user.User{DB: db}

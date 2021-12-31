@@ -156,8 +156,64 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 
 }
 
-func (thread *Thread) Messages(ctx *fasthttp.RequestCtx) {
+func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
+	slugOrID := ctx.UserValue("slug_or_id").(string)
+	limit := string(ctx.QueryArgs().Peek("limit"))
+	since := string(ctx.QueryArgs().Peek("since"))
+	sort := string(ctx.QueryArgs().Peek("sort"))
+	desc := string(ctx.QueryArgs().Peek("desc"))
 
+	if len(sort) == 0 {
+		sort = "flat"
+	}
+
+	var query string
+	var args []interface{}
+	switch sort {
+	case "flat":
+		query = `SELECT p.id, p.thread, p.created,
+				p.message, COALESCE(p.parent, 0), p.author, p.forum FROM posts p JOIN threads thr ON p.thread = thr.id WHERE thr.slug = $1 `
+		args = append(args, slugOrID)
+		argc := 2
+		if len(since) != 0 {
+			if desc == "true" {
+				query += "AND ID < $" + strconv.Itoa(argc)
+				argc++
+			} else {
+				query += "AND ID > $" + strconv.Itoa(argc)
+				argc++
+			}
+			args = append(args, since)
+		}
+		if desc == "true" {
+			query += " ORDER BY created DESC, id DESC "
+		} else {
+			query += " ORDER BY created, id "
+		}
+		if len(limit) != 0 {
+			query += " LIMIT $" + strconv.Itoa(argc)
+			argc++
+			args = append(args, limit)
+		}
+	}
+	log.Println(query, args)
+	rows, err := thread.DB.Query(query, args...)
+	if err != nil {
+		log.Println(err)
+	}
+	result := make(ResThreads, 0)
+	for rows.Next() {
+		var thr ResThread
+		err := rows.Scan(&thr.ID, &thr.Thread, &thr.Created, &thr.Message, &thr.Parent, &thr.Author, &thr.Forum)
+		if err != nil {
+			log.Println(err)
+		}
+		result = append(result, thr)
+	}
+	res, _ := easyjson.Marshal(result)
+	ctx.SetBody(res)
+	ctx.SetStatusCode(200)
+	ctx.SetContentType("application/json")
 }
 
 func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
