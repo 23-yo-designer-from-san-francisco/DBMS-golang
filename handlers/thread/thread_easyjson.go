@@ -17,7 +17,80 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjson2d00218DecodeDBMSHandlersThread(in *jlexer.Lexer, out *ResThreads) {
+func easyjson2d00218DecodeDBMSHandlersThread(in *jlexer.Lexer, out *Vote) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "nickname":
+			out.Nickname = string(in.String())
+		case "voice":
+			out.Voice = int(in.Int())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson2d00218EncodeDBMSHandlersThread(out *jwriter.Writer, in Vote) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"nickname\":"
+		out.RawString(prefix[1:])
+		out.String(string(in.Nickname))
+	}
+	{
+		const prefix string = ",\"voice\":"
+		out.RawString(prefix)
+		out.Int(int(in.Voice))
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v Vote) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson2d00218EncodeDBMSHandlersThread(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v Vote) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson2d00218EncodeDBMSHandlersThread(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *Vote) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson2d00218DecodeDBMSHandlersThread(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *Vote) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson2d00218DecodeDBMSHandlersThread(l, v)
+}
+func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *ResThreads) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		in.Skip()
@@ -45,7 +118,7 @@ func easyjson2d00218DecodeDBMSHandlersThread(in *jlexer.Lexer, out *ResThreads) 
 		in.Consumed()
 	}
 }
-func easyjson2d00218EncodeDBMSHandlersThread(out *jwriter.Writer, in ResThreads) {
+func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in ResThreads) {
 	if in == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 		out.RawString("null")
 	} else {
@@ -63,27 +136,27 @@ func easyjson2d00218EncodeDBMSHandlersThread(out *jwriter.Writer, in ResThreads)
 // MarshalJSON supports json.Marshaler interface
 func (v ResThreads) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson2d00218EncodeDBMSHandlersThread(&w, v)
+	easyjson2d00218EncodeDBMSHandlersThread1(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v ResThreads) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson2d00218EncodeDBMSHandlersThread(w, v)
+	easyjson2d00218EncodeDBMSHandlersThread1(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *ResThreads) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson2d00218DecodeDBMSHandlersThread(&r, v)
+	easyjson2d00218DecodeDBMSHandlersThread1(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *ResThreads) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson2d00218DecodeDBMSHandlersThread(l, v)
+	easyjson2d00218DecodeDBMSHandlersThread1(l, v)
 }
-func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *ResThread) {
+func easyjson2d00218DecodeDBMSHandlersThread2(in *jlexer.Lexer, out *ResThread) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -118,6 +191,12 @@ func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *ResThread) 
 			out.Thread = int(in.Int())
 		case "created":
 			out.Created = string(in.String())
+		case "slug":
+			out.Slug = string(in.String())
+		case "title":
+			out.Title = string(in.String())
+		case "votes":
+			out.Votes = int(in.Int())
 		default:
 			in.SkipRecursive()
 		}
@@ -128,7 +207,7 @@ func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *ResThread) 
 		in.Consumed()
 	}
 }
-func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in ResThread) {
+func easyjson2d00218EncodeDBMSHandlersThread2(out *jwriter.Writer, in ResThread) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -208,29 +287,59 @@ func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in ResThread)
 		}
 		out.String(string(in.Created))
 	}
+	if in.Slug != "" {
+		const prefix string = ",\"slug\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Slug))
+	}
+	if in.Title != "" {
+		const prefix string = ",\"title\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.String(string(in.Title))
+	}
+	if in.Votes != 0 {
+		const prefix string = ",\"votes\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Int(int(in.Votes))
+	}
 	out.RawByte('}')
 }
 
 // MarshalJSON supports json.Marshaler interface
 func (v ResThread) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson2d00218EncodeDBMSHandlersThread1(&w, v)
+	easyjson2d00218EncodeDBMSHandlersThread2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v ResThread) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson2d00218EncodeDBMSHandlersThread1(w, v)
+	easyjson2d00218EncodeDBMSHandlersThread2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *ResThread) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson2d00218DecodeDBMSHandlersThread1(&r, v)
+	easyjson2d00218DecodeDBMSHandlersThread2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *ResThread) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson2d00218DecodeDBMSHandlersThread1(l, v)
+	easyjson2d00218DecodeDBMSHandlersThread2(l, v)
 }

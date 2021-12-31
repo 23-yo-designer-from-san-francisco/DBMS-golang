@@ -17,7 +17,7 @@ func main() {
 	connStr := "dbname=postgres sslmode=disable"
 	var err error
 	db, err := sql.Open("postgres", connStr)
-	if err != nil || db == nil {
+	if err != nil {
 		log.Fatalln(err)
 	}
 
