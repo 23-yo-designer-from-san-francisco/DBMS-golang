@@ -49,14 +49,14 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		row = thread.DB.QueryRow(`SELECT title, forum from threads where id=$1`, id)
 		err = row.Scan(&forumTitle, &forumSwag)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 	} else {
 		id = -1
 		row = thread.DB.QueryRow(`SELECT title, forum, id from threads where slug=$1`, SLUG)
 		err = row.Scan(&forumTitle, &forumSwag, &id)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 	}
 
@@ -142,9 +142,12 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		ctx.SetBody(res)
 		ctx.SetStatusCode(201)
 		ctx.SetContentType("application/json")
-		return
 	} else {
-
+		result := user.ErrMsg{Message: "Can't find post author by nickname: "}
+		res, _ := easyjson.Marshal(result)
+		ctx.SetBody(res)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
 	}
 }
 
@@ -396,14 +399,14 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title from threads where id=$1`, id)
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 	} else {
 		id = -1
 		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title from threads where slug=$1`, threadSlug)
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 	}
 	if len(threadSlug) != 0 {

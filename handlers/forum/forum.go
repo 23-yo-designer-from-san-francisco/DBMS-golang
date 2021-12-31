@@ -268,7 +268,7 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 		}
 		threads := make(ThreadsReq, 0)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
 		}
 		defer rows.Close()
 		found := false
