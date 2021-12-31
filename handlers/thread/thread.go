@@ -7,6 +7,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"log"
 	"strconv"
+	"strings"
 )
 
 //easyjson:json
@@ -60,30 +61,57 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 
 	if len(forumTitle) != 0 {
 		threads := &ResThreads{}
-		result := make(ResThreads, 0)
 		if err := easyjson.Unmarshal(ctx.PostBody(), threads); err != nil {
 			log.Println(err)
 		}
-		for _, thr := range *threads {
-			row := thread.DB.QueryRow("INSERT INTO posts (author, message, forum, thread) "+
-				"VALUES ($1, $2, $3, $4) RETURNING id, created",
-				thr.Author,
-				thr.Message,
-				forumTitle,
-				id,
-			)
-			if err != nil {
-				log.Fatalln(err)
-			}
-			err := row.Scan(&thr.ID, &thr.Created)
-			thr.Forum = forumSwag
-			if err != nil {
-				log.Fatalln(err)
-			}
-			thr.Thread = id
-			result = append(result, thr)
+		if len(*threads) == 0 {
+			ctx.SetBody([]byte("[]"))
+			ctx.SetStatusCode(201)
+			ctx.SetContentType("application/json")
+			return
 		}
-		res, _ := easyjson.Marshal(result)
+		query := `INSERT INTO posts (parent, author, message, thread, forum) VALUES `
+		var values []interface{}
+		for i, thr := range *threads {
+			value := fmt.Sprintf(
+				"(NULLIF($%d, 0), $%d, $%d, $%d, $%d),",
+				i*5+1, i*5+2, i*5+3, i*5+4, i*5+5,
+			)
+			query += value
+			values = append(values, thr.Parent, thr.Author, thr.Message, id, forumSwag)
+		}
+		query = strings.TrimSuffix(query, ",")
+		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
+		log.Println(query)
+		rows, err := thread.DB.Query(query, values...)
+		if err != nil {
+			log.Println(err)
+		}
+		defer rows.Close()
+
+		resPosts := make(ResThreads, 0)
+		for rows.Next() {
+			post := &ResThread{}
+			var parent sql.NullInt64
+
+			err := rows.Scan(
+				&post.ID,
+				&parent,
+				&post.Author,
+				&post.Message,
+				&post.IsEdited,
+				&post.Forum,
+				&post.Thread,
+				&post.Created)
+			if err != nil {
+				log.Println(err)
+			}
+
+			post.Parent = 0
+			resPosts = append(resPosts, *post)
+		}
+		log.Println(resPosts)
+		res, _ := easyjson.Marshal(resPosts)
 		ctx.SetBody(res)
 		ctx.SetStatusCode(201)
 		ctx.SetContentType("application/json")
