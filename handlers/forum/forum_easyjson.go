@@ -328,6 +328,10 @@ func easyjsonC8d74561DecodeDBMSHandlersForum3(in *jlexer.Lexer, out *Req) {
 			out.Title = string(in.String())
 		case "user":
 			out.User = string(in.String())
+		case "posts":
+			out.Posts = int64(in.Int64())
+		case "threads":
+			out.Threads = int64(in.Int64())
 		default:
 			in.SkipRecursive()
 		}
@@ -367,6 +371,26 @@ func easyjsonC8d74561EncodeDBMSHandlersForum3(out *jwriter.Writer, in Req) {
 			out.RawString(prefix)
 		}
 		out.String(string(in.User))
+	}
+	if in.Posts != 0 {
+		const prefix string = ",\"posts\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Int64(int64(in.Posts))
+	}
+	if in.Threads != 0 {
+		const prefix string = ",\"threads\":"
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
+		out.Int64(int64(in.Threads))
 	}
 	out.RawByte('}')
 }
