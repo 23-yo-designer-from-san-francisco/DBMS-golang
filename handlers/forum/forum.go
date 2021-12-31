@@ -130,7 +130,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 	}
 
 	row := forum.DB.QueryRow(`INSERT INTO threads (title,author, forum, message, created, slug) 
-		VALUES($1, $2, $3, $4, $5, CASE WHEN $6 <> '' THEN $6 ELSE NULL END) RETURNING id`,
+		VALUES($1, $2, $3, $4, $5, CASE WHEN $6 <> '' THEN $6 END) RETURNING id`,
 		thr.Title,
 		thr.Author,
 		SWAG,
