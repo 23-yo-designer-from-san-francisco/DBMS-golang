@@ -13,7 +13,7 @@ import (
 //easyjson:json
 type ResThread struct {
 	ID       int    `json:"id,omitempty"`
-	Parent   int    `json:"parent,omitempty"`
+	Parent   int64  `json:"parent,omitempty"`
 	Author   string `json:"author,omitempty"`
 	Message  string `json:"message,omitempty"`
 	IsEdited bool   `json:"isEdited,omitempty"`
@@ -82,7 +82,6 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		}
 		query = strings.TrimSuffix(query, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
-		log.Println(query)
 		rows, err := thread.DB.Query(query, values...)
 		if err != nil {
 			log.Println(err)
@@ -107,10 +106,13 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 				log.Println(err)
 			}
 
-			post.Parent = 0
+			if parent.Valid {
+				post.Parent = parent.Int64
+			} else {
+				post.Parent = 0
+			}
 			resPosts = append(resPosts, *post)
 		}
-		log.Println(resPosts)
 		res, _ := easyjson.Marshal(resPosts)
 		ctx.SetBody(res)
 		ctx.SetStatusCode(201)
@@ -180,9 +182,6 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 	if len(threadSlug) != 0 {
 		vote := &Vote{}
 		easyjson.Unmarshal(ctx.PostBody(), vote)
-		//tx, _ := thread.DB.Begin()
-		log.Println("Thread ID")
-		log.Println(thr.ID)
 		row := thread.DB.QueryRow(`INSERT INTO votes as vote 
                 (nickname, thread, voice)
                 VALUES ($1, $2, $3) 
@@ -194,8 +193,6 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 		if err != nil {
 			log.Println(err)
 		}
-		fmt.Println("Votest")
-		fmt.Println(thr.Votes)
 
 		res, _ := easyjson.Marshal(thr)
 		ctx.SetBody(res)

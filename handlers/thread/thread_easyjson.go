@@ -3,6 +3,7 @@
 package thread
 
 import (
+	sql "database/sql"
 	json "encoding/json"
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
@@ -90,7 +91,120 @@ func (v *Vote) UnmarshalJSON(data []byte) error {
 func (v *Vote) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson2d00218DecodeDBMSHandlersThread(l, v)
 }
-func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *ResThreads) {
+func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *Thread) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "DB":
+			if in.IsNull() {
+				in.Skip()
+				out.DB = nil
+			} else {
+				if out.DB == nil {
+					out.DB = new(sql.DB)
+				}
+				easyjson2d00218DecodeDatabaseSql(in, out.DB)
+			}
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in Thread) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"DB\":"
+		out.RawString(prefix[1:])
+		if in.DB == nil {
+			out.RawString("null")
+		} else {
+			easyjson2d00218EncodeDatabaseSql(out, *in.DB)
+		}
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v Thread) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson2d00218EncodeDBMSHandlersThread1(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v Thread) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson2d00218EncodeDBMSHandlersThread1(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *Thread) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson2d00218DecodeDBMSHandlersThread1(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *Thread) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson2d00218DecodeDBMSHandlersThread1(l, v)
+}
+func easyjson2d00218DecodeDatabaseSql(in *jlexer.Lexer, out *sql.DB) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson2d00218EncodeDatabaseSql(out *jwriter.Writer, in sql.DB) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	out.RawByte('}')
+}
+func easyjson2d00218DecodeDBMSHandlersThread2(in *jlexer.Lexer, out *ResThreads) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		in.Skip()
@@ -118,7 +232,7 @@ func easyjson2d00218DecodeDBMSHandlersThread1(in *jlexer.Lexer, out *ResThreads)
 		in.Consumed()
 	}
 }
-func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in ResThreads) {
+func easyjson2d00218EncodeDBMSHandlersThread2(out *jwriter.Writer, in ResThreads) {
 	if in == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 		out.RawString("null")
 	} else {
@@ -136,27 +250,27 @@ func easyjson2d00218EncodeDBMSHandlersThread1(out *jwriter.Writer, in ResThreads
 // MarshalJSON supports json.Marshaler interface
 func (v ResThreads) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson2d00218EncodeDBMSHandlersThread1(&w, v)
+	easyjson2d00218EncodeDBMSHandlersThread2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v ResThreads) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson2d00218EncodeDBMSHandlersThread1(w, v)
+	easyjson2d00218EncodeDBMSHandlersThread2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *ResThreads) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson2d00218DecodeDBMSHandlersThread1(&r, v)
+	easyjson2d00218DecodeDBMSHandlersThread2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *ResThreads) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson2d00218DecodeDBMSHandlersThread1(l, v)
+	easyjson2d00218DecodeDBMSHandlersThread2(l, v)
 }
-func easyjson2d00218DecodeDBMSHandlersThread2(in *jlexer.Lexer, out *ResThread) {
+func easyjson2d00218DecodeDBMSHandlersThread3(in *jlexer.Lexer, out *ResThread) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -178,7 +292,7 @@ func easyjson2d00218DecodeDBMSHandlersThread2(in *jlexer.Lexer, out *ResThread) 
 		case "id":
 			out.ID = int(in.Int())
 		case "parent":
-			out.Parent = int(in.Int())
+			out.Parent = int64(in.Int64())
 		case "author":
 			out.Author = string(in.String())
 		case "message":
@@ -207,7 +321,7 @@ func easyjson2d00218DecodeDBMSHandlersThread2(in *jlexer.Lexer, out *ResThread) 
 		in.Consumed()
 	}
 }
-func easyjson2d00218EncodeDBMSHandlersThread2(out *jwriter.Writer, in ResThread) {
+func easyjson2d00218EncodeDBMSHandlersThread3(out *jwriter.Writer, in ResThread) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -225,7 +339,7 @@ func easyjson2d00218EncodeDBMSHandlersThread2(out *jwriter.Writer, in ResThread)
 		} else {
 			out.RawString(prefix)
 		}
-		out.Int(int(in.Parent))
+		out.Int64(int64(in.Parent))
 	}
 	if in.Author != "" {
 		const prefix string = ",\"author\":"
@@ -323,23 +437,23 @@ func easyjson2d00218EncodeDBMSHandlersThread2(out *jwriter.Writer, in ResThread)
 // MarshalJSON supports json.Marshaler interface
 func (v ResThread) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson2d00218EncodeDBMSHandlersThread2(&w, v)
+	easyjson2d00218EncodeDBMSHandlersThread3(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v ResThread) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson2d00218EncodeDBMSHandlersThread2(w, v)
+	easyjson2d00218EncodeDBMSHandlersThread3(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *ResThread) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson2d00218DecodeDBMSHandlersThread2(&r, v)
+	easyjson2d00218DecodeDBMSHandlersThread3(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *ResThread) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson2d00218DecodeDBMSHandlersThread2(l, v)
+	easyjson2d00218DecodeDBMSHandlersThread3(l, v)
 }

@@ -114,13 +114,8 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 	easyjson.Unmarshal(ctx.PostBody(), thr)
 
 	var SWAG string
-	log.Println("SLUG")
-	log.Println(SLUG)
 	err := forum.DB.QueryRow(`SELECT slug FROM forums WHERE slug=$1`, SLUG).Scan(&SWAG)
-	log.Println("SWAGGA")
-	log.Println(SWAG)
 	if err == sql.ErrNoRows {
-		log.Println(err)
 		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find thread forum by slug: %s", SWAG)}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
@@ -140,8 +135,6 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 	)
 	err = row.Scan(&thr.ID)
 	if err, ok := err.(*pq.Error); ok {
-		log.Println(err.Code)
-		log.Println(err.Message)
 		switch err.Code {
 		case "23505":
 			thread := &ThreadReq{}
