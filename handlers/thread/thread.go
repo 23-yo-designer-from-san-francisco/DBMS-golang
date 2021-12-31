@@ -172,8 +172,15 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 	switch sort {
 	case "flat":
 		query = `SELECT p.id, p.thread, p.created,
-				p.message, COALESCE(p.parent, 0), p.author, p.forum FROM posts p JOIN threads thr ON p.thread = thr.id WHERE thr.slug = $1 `
-		args = append(args, slugOrID)
+				p.message, COALESCE(p.parent, 0), p.author, p.forum FROM posts p JOIN threads thr ON p.thread = thr.id WHERE `
+		ID, err := strconv.Atoi(slugOrID)
+		if err == nil {
+			query += "thr.ID = $1 "
+			args = append(args, ID)
+		} else {
+			query += "thr.slug = $1 "
+			args = append(args, slugOrID)
+		}
 		argc := 2
 		if len(since) != 0 {
 			if desc == "true" {
@@ -195,6 +202,15 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 			argc++
 			args = append(args, limit)
 		}
+	case "tree":
+		//var sinceQuery string
+		//var descQuery string
+		//var limitSQL string
+		//argc := 2
+		//
+		//var args []interface{}
+		//args = append(args, slugOrID)
+
 	}
 	log.Println(query, args)
 	rows, err := thread.DB.Query(query, args...)
