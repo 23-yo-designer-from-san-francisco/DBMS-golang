@@ -226,6 +226,7 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 				sinceQuery += " > "
 			}
 			sinceQuery += "(SELECT path FROM posts WHERE id=$" + strconv.Itoa(argc) + ")) "
+			args = append(args, since)
 			argc++
 		} else {
 			sinceQuery = ""
@@ -269,13 +270,13 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 		}
 
 		if len(since) != 0 {
-			sinceQuery = " AND id "
+			sinceQuery = " AND p.id "
 			if desc == "true" {
 				sinceQuery += "<"
 			} else {
 				sinceQuery += ">"
 			}
-			sinceQuery += "(SELECT path[1] FROM posts WHERE id = $" + strconv.Itoa(argc)
+			sinceQuery += "(SELECT path[1] FROM posts WHERE id = $" + strconv.Itoa(argc) + ") "
 			argc++
 			args = append(args, since)
 		} else {
