@@ -94,7 +94,32 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
-
+	SLUG := ctx.UserValue("slug_or_id").(string)
+	id, err := strconv.Atoi(SLUG)
+	var row *sql.Row
+	thr := &ResThread{}
+	if err == nil {
+		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title
+										from threads where id=$1`,
+			id)
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		id = -1
+		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title
+										from threads where slug=$1`,
+			SLUG)
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	res, _ := easyjson.Marshal(thr)
+	ctx.SetBody(res)
+	ctx.SetStatusCode(200)
+	ctx.SetContentType("application/json")
 }
 
 func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
