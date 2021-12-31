@@ -42,11 +42,14 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 		request.Email,
 	)
 	if err != nil {
-		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
+		rows, err := user.DB.Query("SELECT nickname, fullname, about, email "+
 			"FROM users "+
 			"WHERE nickname=$1 or email=$2",
 			request.Nickname,
 			request.Email)
+		if err != nil {
+			log.Println(err)
+		}
 		defer func(rows *sql.Rows) {
 			err := rows.Close()
 			if err != nil {

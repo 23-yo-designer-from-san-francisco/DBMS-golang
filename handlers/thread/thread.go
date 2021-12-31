@@ -70,23 +70,35 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 			ctx.SetContentType("application/json")
 			return
 		}
-		query := `INSERT INTO posts (parent, author, message, thread, forum) VALUES `
+		query := `INSERT INTO posts (parent, author, message, thread, forum) VALUES`
 		var values []interface{}
+		usersQuery := `INSERT INTO forum_users (user_nickname, forum_swag) VALUES`
+		var forumUsers []interface{}
 		for i, thr := range *threads {
 			value := fmt.Sprintf(
 				"(NULLIF($%d, 0), $%d, $%d, $%d, $%d),",
 				i*5+1, i*5+2, i*5+3, i*5+4, i*5+5,
 			)
+			usersQuery += fmt.Sprintf("($%d, $%d),", i*2+1, i*2+2)
+			forumUsers = append(forumUsers, thr.Author, forumSwag)
 			query += value
 			values = append(values, thr.Parent, thr.Author, thr.Message, id, forumSwag)
 		}
 		query = strings.TrimSuffix(query, ",")
+		usersQuery = strings.TrimSuffix(usersQuery, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
 		rows, err := thread.DB.Query(query, values...)
 		if err != nil {
 			log.Println(err)
 		}
 		defer rows.Close()
+
+		usersQuery += " ON CONFLICT DO NOTHING"
+		userRows, err := thread.DB.Query(usersQuery, forumUsers...)
+		if err != nil {
+			log.Println(err)
+		}
+		defer userRows.Close()
 
 		resPosts := make(ResThreads, 0)
 		for rows.Next() {
@@ -183,7 +195,6 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 		log.Println(err)
 	}
 	res, _ := easyjson.Marshal(thr)
-	log.Println(string(res))
 	ctx.SetBody(res)
 	ctx.SetStatusCode(200)
 	ctx.SetContentType("application/json")
@@ -346,9 +357,7 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 	}
 	rows, err := thread.DB.Query(query, args...)
 	if err != nil {
-		log.Println("Err here")
-		log.Println(query)
-		log.Fatalln(err)
+		log.Println(err)
 	}
 	result := make(ResThreads, 0)
 	for rows.Next() {

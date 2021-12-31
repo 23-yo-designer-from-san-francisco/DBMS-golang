@@ -162,6 +162,11 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		}
 	}
 	thr.Forum = SWAG
+	userQuery := forum.DB.QueryRow(`INSERT INTO forum_users (user_nickname, forum_swag) VALUES ($1, $2)`, thr.Author, thr.Forum)
+	err = userQuery.Scan()
+	if err != nil {
+		log.Println(err)
+	}
 	res, _ := easyjson.Marshal(thr)
 	ctx.SetBody(res)
 	ctx.SetStatusCode(201)
@@ -169,7 +174,48 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
+	SLUG := string(ctx.UserValue("slug").(string))
+	desc := string(ctx.QueryArgs().Peek("desc"))
+	limit := string(ctx.QueryArgs().Peek("limit"))
+	since := string(ctx.QueryArgs().Peek("since"))
+	users := make(user.Reqs, 0)
 
+	query := forum.DB.QueryRow(`SELECT id from forums WHERE slug=$1`, SLUG)
+	var forumID int
+	query.Scan(&forumID)
+	var queryOpts string
+	if len(since) != 0 {
+		queryOpts += " AND nickname "
+		if desc == "true" {
+			queryOpts += "<"
+		} else {
+			queryOpts += ">"
+		}
+		queryOpts += "'" + since + "'"
+	}
+	queryOpts += " ORDER BY nickname "
+	if desc == "true" {
+		queryOpts += " DESC "
+	}
+	if len(limit) != 0 {
+		queryOpts += " LIMIT " + limit //TODO=Сделать через $
+	}
+
+	rows, err := forum.DB.Query(`SELECT about, email, fullname, nickname FROM users u
+										JOIN forum_users fu ON fu.user_nickname = u.nickname WHERE forum_swag = $1`+queryOpts, SLUG)
+	if err != nil {
+		log.Println(err)
+	}
+	for rows.Next() {
+		var user user.Req
+		rows.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)
+		users = append(users, user)
+	}
+
+	response, _ := easyjson.Marshal(users)
+	ctx.SetBody(response)
+	ctx.SetStatusCode(200)
+	ctx.SetContentType("application/json")
 }
 
 func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
