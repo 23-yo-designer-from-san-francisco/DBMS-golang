@@ -5,7 +5,6 @@ import (
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
-	"time"
 )
 
 type Post struct {
@@ -15,21 +14,33 @@ type Post struct {
 //easyjson:json
 type Res struct {
 	Post struct {
-		Author  string    `json:"author"`
-		Created time.Time `json:"created"`
-		Forum   string    `json:"forum"`
-		ID      int       `json:"id"`
-		Message string    `json:"message"`
-		Thread  int       `json:"thread"`
+		Author   string `json:"author,omitempty"`
+		Created  string `json:"created,omitempty"`
+		Forum    string `json:"forum,omitempty"`
+		ID       int    `json:"id,omitempty"`
+		Message  string `json:"message,omitempty"`
+		Thread   int    `json:"thread,omitempty"`
+		IsEdited bool   `json:"isEdited,omitempty"`
 	} `json:"post"`
+}
+
+//easyjson:json
+type ResPost struct {
+	Author   string `json:"author,omitempty"`
+	Created  string `json:"created,omitempty"`
+	Forum    string `json:"forum,omitempty"`
+	ID       int    `json:"id,omitempty"`
+	Message  string `json:"message,omitempty"`
+	Thread   int    `json:"thread,omitempty"`
+	IsEdited bool   `json:"isEdited,omitempty"`
 }
 
 func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 	ID := ctx.UserValue("id")
-	row := post.DB.QueryRow(`SELECT author, created, forum, id, message, thread FROM posts WHERE id=$1`, ID)
+	row := post.DB.QueryRow(`SELECT author, created, forum, id, message, thread, isedited FROM posts WHERE id=$1`, ID)
 	var resultPost Res
 	err := row.Scan(&resultPost.Post.Author, &resultPost.Post.Created, &resultPost.Post.Forum,
-		&resultPost.Post.ID, &resultPost.Post.Message, &resultPost.Post.Thread)
+		&resultPost.Post.ID, &resultPost.Post.Message, &resultPost.Post.Thread, &resultPost.Post.IsEdited)
 	if err != nil {
 		log.Println(err)
 	}
@@ -41,5 +52,19 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (post *Post) UpdateMessage(ctx *fasthttp.RequestCtx) {
-
+	ID := ctx.UserValue("id")
+	var resultPost ResPost
+	easyjson.Unmarshal(ctx.PostBody(), &resultPost)
+	row := post.DB.QueryRow(`UPDATE posts SET message=$1 WHERE id=$2 RETURNING author, created, forum, id, isedited, message, thread`, resultPost.Message, ID)
+	err := row.Scan(&resultPost.Author, &resultPost.Created, &resultPost.Forum, &resultPost.ID, &resultPost.IsEdited, &resultPost.Message, &resultPost.Thread)
+	if err != nil {
+		log.Println(err)
+	}
+	resultPost.IsEdited = true
+	res, _ := easyjson.Marshal(resultPost)
+	log.Println(resultPost.IsEdited)
+	log.Println(string(res))
+	ctx.SetBody(res)
+	ctx.SetStatusCode(200)
+	ctx.SetContentType("application/json")
 }
