@@ -34,6 +34,7 @@ func main() {
 	r.GET("/post/{id}/details", post.Details)
 	r.POST("/post/{id}/details", post.UpdateMessage)
 
+	service := &service.Service{DB: db}
 	r.POST("/service/clear", service.Clear)
 	r.GET("/service/status", service.Status)
 

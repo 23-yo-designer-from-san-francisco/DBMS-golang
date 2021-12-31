@@ -1,11 +1,41 @@
 package service
 
-import "github.com/valyala/fasthttp"
+import (
+	"database/sql"
+	"github.com/mailru/easyjson"
+	"github.com/valyala/fasthttp"
+	"log"
+)
 
-func Clear(ctx *fasthttp.RequestCtx) {
+type Service struct {
+	DB *sql.DB
+}
+
+//easyjson:json
+type Res struct {
+	Forum  int `json:"forum"`
+	Post   int `json:"post"`
+	Thread int `json:"thread"`
+	User   int `json:"user"`
+}
+
+func (service *Service) Clear(ctx *fasthttp.RequestCtx) {
 
 }
 
-func Status(ctx *fasthttp.RequestCtx) {
-
+func (service *Service) Status(ctx *fasthttp.RequestCtx) {
+	var status Res
+	row := service.DB.QueryRow(`SELECT * FROM
+		(SELECT COUNT(*) FROM users) as user_count,
+ 		(SELECT COUNT(*) FROM forums) as forum_count,
+		(SELECT COUNT(*) FROM threads) as thread_count,
+		(SELECT COUNT(*) FROM posts) as post_count;`)
+	err := row.Scan(&status.User, &status.Forum, &status.Thread, &status.Post)
+	if err != nil {
+		log.Println(err)
+	}
+	res, _ := easyjson.Marshal(status)
+	ctx.SetBody(res)
+	ctx.SetStatusCode(200)
+	ctx.SetContentType("application/json")
 }
