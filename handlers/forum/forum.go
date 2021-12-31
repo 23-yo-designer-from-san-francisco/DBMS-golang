@@ -206,10 +206,27 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 	if err != nil {
 		log.Println(err)
 	}
+	found := false
 	for rows.Next() {
+		found = true
 		var user user.Req
 		rows.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)
 		users = append(users, user)
+	}
+
+	if !found {
+		forum := forum.DB.QueryRow(`SELECT id FROM forums where slug=$1`, SLUG)
+		var forumID int
+		forum.Scan(&forumID)
+		if forumID == 0 {
+			errMsg := &user.ErrMsg{}
+			errMsg.Message = "Can't find forum by slug: " + SLUG
+			res, _ := easyjson.Marshal(errMsg)
+			ctx.SetBody(res)
+			ctx.SetStatusCode(404)
+			ctx.SetContentType("application/json")
+			return
+		}
 	}
 
 	response, _ := easyjson.Marshal(users)
