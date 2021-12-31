@@ -17,9 +17,11 @@ type Forum struct {
 
 //easyjson:json
 type Req struct {
-	Slug  string `json:"slug,omitempty"`
-	Title string `json:"title,omitempty"`
-	User  string `json:"user,omitempty"`
+	Slug    string `json:"slug,omitempty"`
+	Title   string `json:"title,omitempty"`
+	User    string `json:"user,omitempty"`
+	Posts   int64  `json:"posts,omitempty"`
+	Threads int64  `json:"threads,omitempty"`
 }
 
 //easyjson:json
@@ -87,12 +89,15 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	request.Slug = ctx.UserValue("slug").(string)
-	rows, _ := forum.DB.Query(`SELECT slug, title, "user" `+
+	rows, _ := forum.DB.Query(`SELECT slug, title, "user", posts, threads `+
 		"FROM forums "+
 		"WHERE slug=$1",
 		request.Slug)
 	if rows.Next() {
-		rows.Scan(&request.Slug, &request.Title, &request.User)
+		err := rows.Scan(&request.Slug, &request.Title, &request.User, &request.Posts, &request.Threads)
+		if err != nil {
+			log.Println(err)
+		}
 		resp, _ := easyjson.Marshal(request)
 		ctx.Response.SetBody(resp)
 		ctx.SetContentType("application/json")

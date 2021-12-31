@@ -153,7 +153,40 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
+	slugOrID := ctx.UserValue("slug_or_id").(string)
+	var thr ResThread
+	easyjson.Unmarshal(ctx.PostBody(), &thr)
+	argc := 1
+	var args []interface{}
+	ID, err := strconv.Atoi(slugOrID)
+	query := "UPDATE threads SET title=COALESCE(NULLIF($1, ''), title), message=COALESCE(NULLIF($2, ''), message) "
+	args = append(args, thr.Title)
+	argc++
+	args = append(args, thr.Message)
+	argc++
+	if err == nil {
+		query += " WHERE id=$" + strconv.Itoa(argc)
+		args = append(args, ID)
+	} else {
+		query += " WHERE slug=$" + strconv.Itoa(argc)
+		args = append(args, slugOrID)
+	}
+	query += " RETURNING id, title, author, forum, message, votes, slug, created;"
 
+	row := thread.DB.QueryRow(query, args...)
+	err = row.Err()
+	if err != nil {
+		log.Println(err)
+	}
+	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &thr.Slug, &thr.Created)
+	if err != nil {
+		log.Println(err)
+	}
+	res, _ := easyjson.Marshal(thr)
+	log.Println(string(res))
+	ctx.SetBody(res)
+	ctx.SetStatusCode(200)
+	ctx.SetContentType("application/json")
 }
 
 func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
