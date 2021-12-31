@@ -141,19 +141,19 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 	var row *sql.Row
 	thr := &ResThread{}
 	if err == nil {
-		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title
+		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes
 										from threads where id=$1`,
 			id)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
 		if err != nil {
 			log.Println(err)
 		}
 	} else {
 		id = -1
-		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title
+		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes
 										from threads where slug=$1`,
 			SLUG)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
 		if err != nil {
 			log.Println(err)
 		}
