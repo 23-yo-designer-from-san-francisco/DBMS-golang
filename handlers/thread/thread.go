@@ -184,10 +184,10 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 		argc := 2
 		if len(since) != 0 {
 			if desc == "true" {
-				query += "AND ID < $" + strconv.Itoa(argc)
+				query += "AND p.ID < $" + strconv.Itoa(argc)
 				argc++
 			} else {
-				query += "AND ID > $" + strconv.Itoa(argc)
+				query += "AND p.ID > $" + strconv.Itoa(argc)
 				argc++
 			}
 			args = append(args, since)
@@ -195,7 +195,7 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 		if desc == "true" {
 			query += " ORDER BY created DESC, id DESC "
 		} else {
-			query += " ORDER BY created, id "
+			query += " ORDER BY created, p.id "
 		}
 		if len(limit) != 0 {
 			query += " LIMIT $" + strconv.Itoa(argc)
@@ -310,10 +310,11 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
     `
 
 	}
-	log.Println(query, args)
 	rows, err := thread.DB.Query(query, args...)
 	if err != nil {
-		log.Println(err)
+		log.Println("Err here")
+		log.Println(query)
+		log.Fatalln(err)
 	}
 	result := make(ResThreads, 0)
 	for rows.Next() {
@@ -357,7 +358,7 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
                 VALUES ($1, $2, $3) 
                 ON CONFLICT ON CONSTRAINT votes_user_thread_unique DO
                 UPDATE SET voice = $3 WHERE vote.voice <> $3`, vote.Nickname, thr.ID, vote.Voice)
-		log.Println(row.Scan().Error())
+		row.Scan()
 		row = thread.DB.QueryRow(`SELECT votes FROM threads WHERE id=$1`, thr.ID)
 		err := row.Scan(&thr.Votes)
 		if err != nil {
