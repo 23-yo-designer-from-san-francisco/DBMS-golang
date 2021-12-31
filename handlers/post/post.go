@@ -1,6 +1,7 @@
 package post
 
 import (
+	"DBMS/handlers/user"
 	"database/sql"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
@@ -43,6 +44,12 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 		&resultPost.Post.ID, &resultPost.Post.Message, &resultPost.Post.Thread, &resultPost.Post.IsEdited)
 	if err != nil {
 		log.Println(err)
+		errMsg := &user.ErrMsg{Message: "Can't find post with id: "}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
+		return
 	}
 
 	res, _ := easyjson.Marshal(resultPost)
