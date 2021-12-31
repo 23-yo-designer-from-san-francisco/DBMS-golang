@@ -104,6 +104,12 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		userRows, err := thread.DB.Query(usersQuery, forumUsers...)
 		if err != nil {
 			log.Println(err)
+			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
+			res, _ := easyjson.Marshal(result)
+			ctx.SetBody(res)
+			ctx.SetStatusCode(404)
+			ctx.SetContentType("application/json")
+			return
 		}
 		defer userRows.Close()
 
