@@ -4,6 +4,7 @@ import (
 	"DBMS/handlers/user"
 	"database/sql"
 	"fmt"
+	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
@@ -163,6 +164,12 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
 		if err != nil {
 			log.Println(err)
+			result := user.ErrMsg{Message: "Can't find thread by ID: "}
+			res, _ := easyjson.Marshal(result)
+			ctx.SetBody(res)
+			ctx.SetStatusCode(404)
+			ctx.SetContentType("application/json")
+			return
 		}
 	} else {
 		id = -1
@@ -172,6 +179,12 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
 		if err != nil {
 			log.Println(err)
+			result := user.ErrMsg{Message: "Can't find thread by slug: "}
+			res, _ := easyjson.Marshal(result)
+			ctx.SetBody(res)
+			ctx.SetStatusCode(404)
+			ctx.SetContentType("application/json")
+			return
 		}
 	}
 	res, _ := easyjson.Marshal(thr)
@@ -417,9 +430,20 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
                 VALUES ($1, $2, $3) 
                 ON CONFLICT ON CONSTRAINT votes_user_thread_unique DO
                 UPDATE SET voice = $3 WHERE vote.voice <> $3`, vote.Nickname, thr.ID, vote.Voice)
-		row.Scan()
+		err := row.Scan()
+		if err, ok := err.(*pq.Error); ok {
+			switch err.Code {
+			case "23503":
+				result := user.ErrMsg{Message: "Can't find user by nickname: "}
+				res, _ := easyjson.Marshal(result)
+				ctx.SetBody(res)
+				ctx.SetStatusCode(404)
+				ctx.SetContentType("application/json")
+				return
+			}
+		}
 		row = thread.DB.QueryRow(`SELECT votes FROM threads WHERE id=$1`, thr.ID)
-		err := row.Scan(&thr.Votes)
+		err = row.Scan(&thr.Votes)
 		if err != nil {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find thread by slug: " + threadSlug}
