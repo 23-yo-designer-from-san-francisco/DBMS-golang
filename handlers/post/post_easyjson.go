@@ -599,7 +599,87 @@ func easyjson5a72dc82Encode3(out *jwriter.Writer, in struct {
 	}
 	out.RawByte('}')
 }
-func easyjson5a72dc82DecodeDBMSHandlersPost3(in *jlexer.Lexer, out *ResWithAuthor) {
+func easyjson5a72dc82DecodeDBMSHandlersPost3(in *jlexer.Lexer, out *ResWithAuthorAndForum) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "post":
+			easyjson5a72dc82Decode(in, &out.Post)
+		case "author":
+			easyjson5a72dc82Decode3(in, &out.Author)
+		case "forum":
+			easyjson5a72dc82Decode2(in, &out.Forum)
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson5a72dc82EncodeDBMSHandlersPost3(out *jwriter.Writer, in ResWithAuthorAndForum) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"post\":"
+		out.RawString(prefix[1:])
+		easyjson5a72dc82Encode(out, in.Post)
+	}
+	{
+		const prefix string = ",\"author\":"
+		out.RawString(prefix)
+		easyjson5a72dc82Encode3(out, in.Author)
+	}
+	{
+		const prefix string = ",\"forum\":"
+		out.RawString(prefix)
+		easyjson5a72dc82Encode2(out, in.Forum)
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v ResWithAuthorAndForum) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson5a72dc82EncodeDBMSHandlersPost3(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v ResWithAuthorAndForum) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson5a72dc82EncodeDBMSHandlersPost3(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *ResWithAuthorAndForum) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson5a72dc82DecodeDBMSHandlersPost3(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *ResWithAuthorAndForum) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson5a72dc82DecodeDBMSHandlersPost3(l, v)
+}
+func easyjson5a72dc82DecodeDBMSHandlersPost4(in *jlexer.Lexer, out *ResWithAuthor) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -632,7 +712,7 @@ func easyjson5a72dc82DecodeDBMSHandlersPost3(in *jlexer.Lexer, out *ResWithAutho
 		in.Consumed()
 	}
 }
-func easyjson5a72dc82EncodeDBMSHandlersPost3(out *jwriter.Writer, in ResWithAuthor) {
+func easyjson5a72dc82EncodeDBMSHandlersPost4(out *jwriter.Writer, in ResWithAuthor) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -652,27 +732,27 @@ func easyjson5a72dc82EncodeDBMSHandlersPost3(out *jwriter.Writer, in ResWithAuth
 // MarshalJSON supports json.Marshaler interface
 func (v ResWithAuthor) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson5a72dc82EncodeDBMSHandlersPost3(&w, v)
+	easyjson5a72dc82EncodeDBMSHandlersPost4(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v ResWithAuthor) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson5a72dc82EncodeDBMSHandlersPost3(w, v)
+	easyjson5a72dc82EncodeDBMSHandlersPost4(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *ResWithAuthor) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson5a72dc82DecodeDBMSHandlersPost3(&r, v)
+	easyjson5a72dc82DecodeDBMSHandlersPost4(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *ResWithAuthor) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson5a72dc82DecodeDBMSHandlersPost3(l, v)
+	easyjson5a72dc82DecodeDBMSHandlersPost4(l, v)
 }
-func easyjson5a72dc82DecodeDBMSHandlersPost4(in *jlexer.Lexer, out *ResPost) {
+func easyjson5a72dc82DecodeDBMSHandlersPost5(in *jlexer.Lexer, out *ResPost) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -715,7 +795,7 @@ func easyjson5a72dc82DecodeDBMSHandlersPost4(in *jlexer.Lexer, out *ResPost) {
 		in.Consumed()
 	}
 }
-func easyjson5a72dc82EncodeDBMSHandlersPost4(out *jwriter.Writer, in ResPost) {
+func easyjson5a72dc82EncodeDBMSHandlersPost5(out *jwriter.Writer, in ResPost) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -791,27 +871,27 @@ func easyjson5a72dc82EncodeDBMSHandlersPost4(out *jwriter.Writer, in ResPost) {
 // MarshalJSON supports json.Marshaler interface
 func (v ResPost) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson5a72dc82EncodeDBMSHandlersPost4(&w, v)
+	easyjson5a72dc82EncodeDBMSHandlersPost5(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v ResPost) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson5a72dc82EncodeDBMSHandlersPost4(w, v)
+	easyjson5a72dc82EncodeDBMSHandlersPost5(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *ResPost) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson5a72dc82DecodeDBMSHandlersPost4(&r, v)
+	easyjson5a72dc82DecodeDBMSHandlersPost5(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *ResPost) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson5a72dc82DecodeDBMSHandlersPost4(l, v)
+	easyjson5a72dc82DecodeDBMSHandlersPost5(l, v)
 }
-func easyjson5a72dc82DecodeDBMSHandlersPost5(in *jlexer.Lexer, out *Res) {
+func easyjson5a72dc82DecodeDBMSHandlersPost6(in *jlexer.Lexer, out *Res) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -842,7 +922,7 @@ func easyjson5a72dc82DecodeDBMSHandlersPost5(in *jlexer.Lexer, out *Res) {
 		in.Consumed()
 	}
 }
-func easyjson5a72dc82EncodeDBMSHandlersPost5(out *jwriter.Writer, in Res) {
+func easyjson5a72dc82EncodeDBMSHandlersPost6(out *jwriter.Writer, in Res) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -857,27 +937,27 @@ func easyjson5a72dc82EncodeDBMSHandlersPost5(out *jwriter.Writer, in Res) {
 // MarshalJSON supports json.Marshaler interface
 func (v Res) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson5a72dc82EncodeDBMSHandlersPost5(&w, v)
+	easyjson5a72dc82EncodeDBMSHandlersPost6(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Res) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson5a72dc82EncodeDBMSHandlersPost5(w, v)
+	easyjson5a72dc82EncodeDBMSHandlersPost6(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Res) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson5a72dc82DecodeDBMSHandlersPost5(&r, v)
+	easyjson5a72dc82DecodeDBMSHandlersPost6(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Res) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson5a72dc82DecodeDBMSHandlersPost5(l, v)
+	easyjson5a72dc82DecodeDBMSHandlersPost6(l, v)
 }
-func easyjson5a72dc82DecodeDBMSHandlersPost6(in *jlexer.Lexer, out *Post) {
+func easyjson5a72dc82DecodeDBMSHandlersPost7(in *jlexer.Lexer, out *Post) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -916,7 +996,7 @@ func easyjson5a72dc82DecodeDBMSHandlersPost6(in *jlexer.Lexer, out *Post) {
 		in.Consumed()
 	}
 }
-func easyjson5a72dc82EncodeDBMSHandlersPost6(out *jwriter.Writer, in Post) {
+func easyjson5a72dc82EncodeDBMSHandlersPost7(out *jwriter.Writer, in Post) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -935,25 +1015,25 @@ func easyjson5a72dc82EncodeDBMSHandlersPost6(out *jwriter.Writer, in Post) {
 // MarshalJSON supports json.Marshaler interface
 func (v Post) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson5a72dc82EncodeDBMSHandlersPost6(&w, v)
+	easyjson5a72dc82EncodeDBMSHandlersPost7(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Post) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson5a72dc82EncodeDBMSHandlersPost6(w, v)
+	easyjson5a72dc82EncodeDBMSHandlersPost7(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Post) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson5a72dc82DecodeDBMSHandlersPost6(&r, v)
+	easyjson5a72dc82DecodeDBMSHandlersPost7(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Post) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson5a72dc82DecodeDBMSHandlersPost6(l, v)
+	easyjson5a72dc82DecodeDBMSHandlersPost7(l, v)
 }
 func easyjson5a72dc82DecodeDatabaseSql(in *jlexer.Lexer, out *sql.DB) {
 	isTopLevel := in.IsStart()

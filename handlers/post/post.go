@@ -115,6 +115,32 @@ type ResWithAuthorAndThread struct {
 }
 
 //easyjson:json
+type ResWithAuthorAndForum struct {
+	Post struct {
+		Author   string `json:"author"`
+		Created  string `json:"created"`
+		Forum    string `json:"forum"`
+		ID       int    `json:"id"`
+		Message  string `json:"message"`
+		Thread   int    `json:"thread"`
+		IsEdited bool   `json:"isEdited"`
+	} `json:"post"`
+	Author struct {
+		About    string `json:"about"`
+		Email    string `json:"email"`
+		Fullname string `json:"fullname"`
+		Nickname string `json:"nickname"`
+	} `json:"author"`
+	Forum struct {
+		Posts   int    `json:"posts"`
+		Slug    string `json:"slug"`
+		Threads int    `json:"threads"`
+		Title   string `json:"title"`
+		User    string `json:"user"`
+	} `json:"forum"`
+}
+
+//easyjson:json
 type ResPost struct {
 	Author   string `json:"author,omitempty"`
 	Created  string `json:"created,omitempty"`
@@ -191,6 +217,24 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 		thread := post.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title FROM threads WHERE id=$1`, resultPost.Post.Thread)
 		err := thread.Scan(&result.Thread.Author, &result.Thread.Created, &result.Thread.Forum, &result.Thread.ID, &result.Thread.Message,
 			&result.Thread.Slug, &result.Thread.Title)
+		if err != nil {
+			log.Println(err)
+		}
+		usr := post.DB.QueryRow(`SELECT about, email, fullname, nickname FROM users WHERE nickname=$1`, resultPost.Post.Author)
+		err = usr.Scan(&result.Author.About, &result.Author.Email, &result.Author.Fullname, &result.Author.Nickname)
+		if err != nil {
+			log.Println(err)
+		}
+		res, _ := easyjson.Marshal(result)
+		ctx.SetBody(res)
+		ctx.SetStatusCode(200)
+		ctx.SetContentType("application/json")
+		return
+	} else if related == "user,forum" {
+		var result ResWithAuthorAndForum
+		result.Post = resultPost.Post
+		forum := post.DB.QueryRow(`SELECT posts, slug, threads, title, "user" FROM forums WHERE slug=$1`, resultPost.Post.Forum)
+		err := forum.Scan(&result.Forum.Posts, &result.Forum.Slug, &result.Forum.Threads, &result.Forum.Title, &result.Forum.User)
 		if err != nil {
 			log.Println(err)
 		}
