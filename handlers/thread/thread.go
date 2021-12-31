@@ -246,6 +246,69 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 			limitSQL = ""
 		}
 		query += sinceQuery + `ORDER BY path` + descQuery + limitSQL
+	default:
+		var IDSubquery string
+		var descQuery string
+		var sinceQuery string
+		var limitQuery string
+
+		ID, err := strconv.Atoi(slugOrID)
+		if err == nil {
+			IDSubquery += "thr.id = $1 "
+			args = append(args, ID)
+		} else {
+			IDSubquery += "thr.slug = $1 "
+			args = append(args, slugOrID)
+		}
+		argc := 2
+
+		if desc == "true" {
+			descQuery = " DESC "
+		} else {
+			descQuery = ""
+		}
+
+		if len(since) != 0 {
+			sinceQuery = " AND id "
+			if desc == "true" {
+				sinceQuery += "<"
+			} else {
+				sinceQuery += ">"
+			}
+			sinceQuery += "(SELECT path[1] FROM posts WHERE id = $" + strconv.Itoa(argc)
+			argc++
+			args = append(args, since)
+		} else {
+			sinceQuery = ""
+		}
+
+		if len(limit) != 0 {
+			limitQuery = "LIMIT $" + strconv.Itoa(argc)
+			lim, _ := strconv.Atoi(limit)
+			args = append(args, lim)
+		} else {
+			limitQuery = "LIMIT 100000"
+		}
+
+		query = `
+    SELECT p.id, p.thread, p.created, p.message, COALESCE(p.parent, 0),
+      p.author, p.forum
+      FROM posts p
+    JOIN threads thr ON p.thread = thr.id 
+      WHERE path[1] IN (
+        SELECT p.id FROM posts p JOIN threads thr ON p.thread = thr.id WHERE `
+		query += "" + IDSubquery + ` AND parent IS NULL `
+		query += sinceQuery
+		query += "ORDER BY id "
+		query += descQuery
+		query += limitQuery
+		query += `
+      ) AND `
+		query += IDSubquery
+		query += `ORDER BY path[1]` + descQuery
+		query += `, path;
+    `
+
 	}
 	log.Println(query, args)
 	rows, err := thread.DB.Query(query, args...)
