@@ -30,6 +30,7 @@ func main() {
 	r.GET("/forum/{slug}/users", forum.Users)
 	r.GET("/forum/{slug}/threads", forum.GetThreads)
 
+	post := &post.Post{DB: db}
 	r.GET("/post/{id}/details", post.Details)
 	r.POST("/post/{id}/details", post.UpdateMessage)
 
