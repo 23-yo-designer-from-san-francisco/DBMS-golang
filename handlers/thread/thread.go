@@ -242,6 +242,24 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 
 	var query string
 	var args []interface{}
+	ID, err := strconv.Atoi(slugOrID)
+	var thr *sql.Row
+	if err == nil {
+		thr = thread.DB.QueryRow(`SELECT count(*) FROM threads WHERE id=$1`, ID)
+	} else {
+		thr = thread.DB.QueryRow(`SELECT count(*) FROM threads WHERE slug=$1`, slugOrID)
+	}
+	var threadFound int
+	thr.Scan(&threadFound)
+	if threadFound == 0 {
+		errMsg := &user.ErrMsg{Message: "Can't find thread by slug: "}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
+		return
+	}
+
 	switch sort {
 	case "flat":
 		query = `SELECT p.id, p.thread, p.created,
@@ -389,7 +407,9 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 		log.Println(err)
 	}
 	result := make(ResThreads, 0)
+	//found := false
 	for rows.Next() {
+		//found = true
 		var thr ResThread
 		err := rows.Scan(&thr.ID, &thr.Thread, &thr.Created, &thr.Message, &thr.Parent, &thr.Author, &thr.Forum)
 		if err != nil {
