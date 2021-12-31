@@ -222,6 +222,12 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &thr.Slug, &thr.Created)
 	if err != nil {
 		log.Println(err)
+		errMsg := &user.ErrMsg{Message: "Can't find thread by slug: "}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
+		return
 	}
 	res, _ := easyjson.Marshal(thr)
 	ctx.SetBody(res)
