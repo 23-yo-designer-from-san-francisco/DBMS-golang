@@ -1,6 +1,7 @@
 package thread
 
 import (
+	"DBMS/handlers/user"
 	"database/sql"
 	"fmt"
 	"github.com/mailru/easyjson"
@@ -90,6 +91,12 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		rows, err := thread.DB.Query(query, values...)
 		if err != nil {
 			log.Println(err)
+			result := user.ErrMsg{Message: "Parent post was created in another thread"}
+			res, _ := easyjson.Marshal(result)
+			ctx.SetBody(res)
+			ctx.SetStatusCode(409)
+			ctx.SetContentType("application/json")
+			return
 		}
 		defer rows.Close()
 

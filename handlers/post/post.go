@@ -62,8 +62,6 @@ func (post *Post) UpdateMessage(ctx *fasthttp.RequestCtx) {
 	}
 	resultPost.IsEdited = true
 	res, _ := easyjson.Marshal(resultPost)
-	log.Println(resultPost.IsEdited)
-	log.Println(string(res))
 	ctx.SetBody(res)
 	ctx.SetStatusCode(200)
 	ctx.SetContentType("application/json")
