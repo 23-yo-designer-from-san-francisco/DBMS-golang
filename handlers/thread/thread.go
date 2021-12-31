@@ -422,14 +422,24 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 		err := row.Scan(&thr.Votes)
 		if err != nil {
 			log.Println(err)
+			result := user.ErrMsg{Message: "Can't find thread by slug: " + threadSlug}
+			res, _ := easyjson.Marshal(result)
+			ctx.SetBody(res)
+			ctx.SetStatusCode(404)
+			ctx.SetContentType("application/json")
+			return
 		}
 
 		res, _ := easyjson.Marshal(thr)
 		ctx.SetBody(res)
 		ctx.SetStatusCode(200)
 		ctx.SetContentType("application/json")
-		return
 	} else {
-
+		log.Println("Here")
+		result := user.ErrMsg{Message: "Can't find thread by slug: "}
+		res, _ := easyjson.Marshal(result)
+		ctx.SetBody(res)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
 	}
 }
