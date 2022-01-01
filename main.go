@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	connStr := fmt.Sprintf("port=%s dbname=%s username=%s password=%s sslmode=disable",
+	connStr := fmt.Sprintf("port=%s dbname=%s user=%s password=%s sslmode=disable",
 		os.Getenv("DBPORT"),
 		os.Getenv("DBNAME"),
 		os.Getenv("DBUSER"),
