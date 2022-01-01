@@ -16,8 +16,7 @@ import (
 )
 
 func main() {
-	connStr := fmt.Sprintf("port=%s dbname=%s user=%s password=%s sslmode=disable",
-		os.Getenv("DBPORT"),
+	connStr := fmt.Sprintf("host=/var/run/postgresql dbname=%s user=%s password=%s sslmode=disable",
 		os.Getenv("DBNAME"),
 		os.Getenv("DBUSER"),
 		os.Getenv("DBPASS"),
