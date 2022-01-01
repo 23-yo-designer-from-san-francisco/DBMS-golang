@@ -150,6 +150,14 @@ func (post *Post) UpdateMessage(ctx *fasthttp.RequestCtx) {
 	if err != nil {
 		log.Println(err)
 	}
+	if resultPost.ID == 0 {
+		err := user.ErrMsg{Message: "Can't find post with id: "}
+		res, _ := easyjson.Marshal(err)
+		ctx.SetBody(res)
+		ctx.SetStatusCode(404)
+		ctx.SetContentType("application/json")
+		return
+	}
 	resultPost.IsEdited = true
 	res, _ := easyjson.Marshal(resultPost)
 	ctx.SetBody(res)
