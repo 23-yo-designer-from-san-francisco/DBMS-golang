@@ -6,10 +6,38 @@ import (
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
+	"strings"
 )
 
 type Post struct {
 	DB *sql.DB
+}
+
+//easyjson:json
+type Author struct {
+	About    string `json:"about,omitempty"`
+	Email    string `json:"email,omitempty"`
+	Fullname string `json:"fullname,omitempty"`
+	Nickname string `json:"nickname,omitempty"`
+}
+
+//easyjson:json
+type Thread struct {
+	Author  string `json:"author"`
+	Created string `json:"created"`
+	Forum   string `json:"forum"`
+	ID      int    `json:"id"`
+	Message string `json:"message"`
+	Slug    string `json:"slug"`
+	Title   string `json:"title"`
+}
+
+type Forum struct {
+	Posts   int    `json:"posts"`
+	Slug    string `json:"slug"`
+	Threads int    `json:"threads"`
+	Title   string `json:"title"`
+	User    string `json:"user"`
 }
 
 //easyjson:json
@@ -23,132 +51,20 @@ type Res struct {
 		Thread   int    `json:"thread"`
 		IsEdited bool   `json:"isEdited"`
 	} `json:"post"`
-}
-
-//easyjson:json
-type ResWithAuthor struct {
-	Author struct {
-		About    string `json:"about"`
-		Email    string `json:"email"`
-		Fullname string `json:"fullname"`
-		Nickname string `json:"nickname"`
-	} `json:"author"`
-	Post struct {
-		Author   string `json:"author"`
-		Created  string `json:"created"`
-		Forum    string `json:"forum"`
-		ID       int    `json:"id"`
-		Message  string `json:"message"`
-		Thread   int    `json:"thread"`
-		IsEdited bool   `json:"isEdited"`
-	} `json:"post"`
-}
-
-//easyjson:json
-type ResWithThread struct {
-	Post struct {
-		Author   string `json:"author"`
-		Created  string `json:"created"`
-		Forum    string `json:"forum"`
-		ID       int    `json:"id"`
-		Message  string `json:"message"`
-		Thread   int    `json:"thread"`
-		IsEdited bool   `json:"isEdited"`
-	} `json:"post"`
-	Thread struct {
-		Author  string `json:"author"`
-		Created string `json:"created"`
-		Forum   string `json:"forum"`
-		ID      int    `json:"id"`
-		Message string `json:"message"`
-		Slug    string `json:"slug"`
-		Title   string `json:"title"`
-	} `json:"thread"`
-}
-
-//easyjson:json
-type ResWithForum struct {
-	Post struct {
-		Author   string `json:"author"`
-		Created  string `json:"created"`
-		Forum    string `json:"forum"`
-		ID       int    `json:"id"`
-		Message  string `json:"message"`
-		Thread   int    `json:"thread"`
-		IsEdited bool   `json:"isEdited"`
-	} `json:"post"`
-	Forum struct {
-		Posts   int    `json:"posts"`
-		Slug    string `json:"slug"`
-		Threads int    `json:"threads"`
-		Title   string `json:"title"`
-		User    string `json:"user"`
-	} `json:"forum"`
-}
-
-//easyjson:json
-type ResWithAuthorAndThread struct {
-	Post struct {
-		Author   string `json:"author"`
-		Created  string `json:"created"`
-		Forum    string `json:"forum"`
-		ID       int    `json:"id"`
-		Message  string `json:"message"`
-		Thread   int    `json:"thread"`
-		IsEdited bool   `json:"isEdited"`
-	} `json:"post"`
-	Author struct {
-		About    string `json:"about"`
-		Email    string `json:"email"`
-		Fullname string `json:"fullname"`
-		Nickname string `json:"nickname"`
-	} `json:"author"`
-	Thread struct {
-		Author  string `json:"author"`
-		Created string `json:"created"`
-		Forum   string `json:"forum"`
-		ID      int    `json:"id"`
-		Message string `json:"message"`
-		Slug    string `json:"slug"`
-		Title   string `json:"title"`
-	} `json:"thread"`
-}
-
-//easyjson:json
-type ResWithAuthorAndForum struct {
-	Post struct {
-		Author   string `json:"author"`
-		Created  string `json:"created"`
-		Forum    string `json:"forum"`
-		ID       int    `json:"id"`
-		Message  string `json:"message"`
-		Thread   int    `json:"thread"`
-		IsEdited bool   `json:"isEdited"`
-	} `json:"post"`
-	Author struct {
-		About    string `json:"about"`
-		Email    string `json:"email"`
-		Fullname string `json:"fullname"`
-		Nickname string `json:"nickname"`
-	} `json:"author"`
-	Forum struct {
-		Posts   int    `json:"posts"`
-		Slug    string `json:"slug"`
-		Threads int    `json:"threads"`
-		Title   string `json:"title"`
-		User    string `json:"user"`
-	} `json:"forum"`
+	Author *Author `json:"author"`
+	Thread *Thread `json:"thread"`
+	Forum  *Forum  `json:"forum"`
 }
 
 //easyjson:json
 type ResPost struct {
-	Author   string `json:"author,omitempty"`
-	Created  string `json:"created,omitempty"`
-	Forum    string `json:"forum,omitempty"`
-	ID       int    `json:"id,omitempty"`
-	Message  string `json:"message,omitempty"`
-	Thread   int    `json:"thread,omitempty"`
-	IsEdited bool   `json:"isEdited,omitempty"`
+	Author   string `json:"author"`
+	Created  string `json:"created"`
+	Forum    string `json:"forum"`
+	ID       int    `json:"id"`
+	Message  string `json:"message"`
+	Thread   int    `json:"thread"`
+	IsEdited bool   `json:"isEdited"`
 }
 
 func (post *Post) Details(ctx *fasthttp.RequestCtx) {
@@ -171,85 +87,33 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	if related == "user" {
-		var result ResWithAuthor
-		result.Post = resultPost.Post
+	if strings.Contains(related, "user") {
+		resultPost.Author = &Author{}
 		usr := post.DB.QueryRow(`SELECT about, email, fullname, nickname FROM users WHERE nickname=$1`, resultPost.Post.Author)
-		err := usr.Scan(&result.Author.About, &result.Author.Email, &result.Author.Fullname, &result.Author.Nickname)
+		err := usr.Scan(&resultPost.Author.About, &resultPost.Author.Email, &resultPost.Author.Fullname, &resultPost.Author.Nickname)
 		if err != nil {
 			log.Println(err)
 		}
-		res, _ := easyjson.Marshal(result)
-		ctx.SetBody(res)
-		ctx.SetStatusCode(200)
-		ctx.SetContentType("application/json")
-		return
-	} else if related == "thread" {
-		var result ResWithThread
-		result.Post = resultPost.Post
-		thread := post.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title FROM threads WHERE id=$1`, resultPost.Post.Thread)
-		err := thread.Scan(&result.Thread.Author, &result.Thread.Created, &result.Thread.Forum, &result.Thread.ID, &result.Thread.Message,
-			&result.Thread.Slug, &result.Thread.Title)
-		if err != nil {
-			log.Println(err)
-		}
-		res, _ := easyjson.Marshal(result)
-		ctx.SetBody(res)
-		ctx.SetStatusCode(200)
-		ctx.SetContentType("application/json")
-		return
-	} else if related == "forum" {
-		var result ResWithForum
-		result.Post = resultPost.Post
-		forum := post.DB.QueryRow(`SELECT posts, slug, threads, title, "user" FROM forums WHERE slug=$1`, resultPost.Post.Forum)
-		err := forum.Scan(&result.Forum.Posts, &result.Forum.Slug, &result.Forum.Threads, &result.Forum.Title, &result.Forum.User)
-		if err != nil {
-			log.Println(err)
-		}
-		res, _ := easyjson.Marshal(result)
-		ctx.SetBody(res)
-		ctx.SetStatusCode(200)
-		ctx.SetContentType("application/json")
-		return
-	} else if related == "user,thread" {
-		var result ResWithAuthorAndThread
-		result.Post = resultPost.Post
-		thread := post.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title FROM threads WHERE id=$1`, resultPost.Post.Thread)
-		err := thread.Scan(&result.Thread.Author, &result.Thread.Created, &result.Thread.Forum, &result.Thread.ID, &result.Thread.Message,
-			&result.Thread.Slug, &result.Thread.Title)
-		if err != nil {
-			log.Println(err)
-		}
-		usr := post.DB.QueryRow(`SELECT about, email, fullname, nickname FROM users WHERE nickname=$1`, resultPost.Post.Author)
-		err = usr.Scan(&result.Author.About, &result.Author.Email, &result.Author.Fullname, &result.Author.Nickname)
-		if err != nil {
-			log.Println(err)
-		}
-		res, _ := easyjson.Marshal(result)
-		ctx.SetBody(res)
-		ctx.SetStatusCode(200)
-		ctx.SetContentType("application/json")
-		return
-	} else if related == "user,forum" {
-		var result ResWithAuthorAndForum
-		result.Post = resultPost.Post
-		forum := post.DB.QueryRow(`SELECT posts, slug, threads, title, "user" FROM forums WHERE slug=$1`, resultPost.Post.Forum)
-		err := forum.Scan(&result.Forum.Posts, &result.Forum.Slug, &result.Forum.Threads, &result.Forum.Title, &result.Forum.User)
-		if err != nil {
-			log.Println(err)
-		}
-		usr := post.DB.QueryRow(`SELECT about, email, fullname, nickname FROM users WHERE nickname=$1`, resultPost.Post.Author)
-		err = usr.Scan(&result.Author.About, &result.Author.Email, &result.Author.Fullname, &result.Author.Nickname)
-		if err != nil {
-			log.Println(err)
-		}
-		res, _ := easyjson.Marshal(result)
-		ctx.SetBody(res)
-		ctx.SetStatusCode(200)
-		ctx.SetContentType("application/json")
-		return
 	}
 
+	if strings.Contains(related, "thread") {
+		resultPost.Thread = &Thread{}
+		thread := post.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title FROM threads WHERE id=$1`, resultPost.Post.Thread)
+		err := thread.Scan(&resultPost.Thread.Author, &resultPost.Thread.Created, &resultPost.Thread.Forum, &resultPost.Thread.ID, &resultPost.Thread.Message,
+			&resultPost.Thread.Slug, &resultPost.Thread.Title)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
+	if strings.Contains(related, "forum") {
+		resultPost.Forum = &Forum{}
+		forum := post.DB.QueryRow(`SELECT posts, slug, threads, title, "user" FROM forums WHERE slug=$1`, resultPost.Post.Forum)
+		err := forum.Scan(&resultPost.Forum.Posts, &resultPost.Forum.Slug, &resultPost.Forum.Threads, &resultPost.Forum.Title, &resultPost.Forum.User)
+		if err != nil {
+			log.Println(err)
+		}
+	}
 	res, _ := easyjson.Marshal(resultPost)
 	ctx.SetBody(res)
 	ctx.SetStatusCode(200)
