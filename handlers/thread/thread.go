@@ -162,7 +162,7 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 										from threads where id=$1`,
 			id)
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
-		if err != nil {
+		if thr.ID == 0 {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find thread by ID: "}
 			res, _ := easyjson.Marshal(result)
