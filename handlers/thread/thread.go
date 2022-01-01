@@ -7,7 +7,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +41,6 @@ type Vote struct {
 type ResThreads []ResThread
 
 func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
-	//log.Println("POST /thread/{slug_or_id}/create")
 	SLUG := ctx.UserValue("slug_or_id").(string)
 	id, err := strconv.Atoi(SLUG)
 	var row *sql.Row
@@ -51,23 +49,15 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 	if err == nil {
 		row = thread.DB.QueryRow(`SELECT title, forum from threads where id=$1`, id)
 		err = row.Scan(&forumTitle, &forumSwag)
-		//if err != nil {
-		//log.Println(err)
-		//}
 	} else {
 		id = -1
 		row = thread.DB.QueryRow(`SELECT title, forum, id from threads where slug=$1`, SLUG)
 		err = row.Scan(&forumTitle, &forumSwag, &id)
-		//if err != nil {
-		//	log.Println(err)
-		//}
 	}
 
 	if len(forumTitle) != 0 {
 		threads := &ResThreads{}
-		if err := easyjson.Unmarshal(ctx.PostBody(), threads); err != nil {
-			log.Println(err)
-		}
+		easyjson.Unmarshal(ctx.PostBody(), threads)
 		if len(*threads) == 0 {
 			ctx.SetBody([]byte("[]"))
 			ctx.SetStatusCode(201)
@@ -94,7 +84,6 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		rows, err := thread.DB.Query(query, values...)
 		defer rows.Close()
 		if err != nil {
-			log.Println(err)
 			result := user.ErrMsg{Message: "Parent post was created in another thread"}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
@@ -107,7 +96,6 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		userRows, err := thread.DB.Query(usersQuery, forumUsers...)
 		defer userRows.Close()
 		if err != nil {
-			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
@@ -121,7 +109,7 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 			post := &ResThread{}
 			var parent sql.NullInt64
 
-			err := rows.Scan(
+			rows.Scan(
 				&post.ID,
 				&parent,
 				&post.Author,
@@ -130,9 +118,6 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 				&post.Forum,
 				&post.Thread,
 				&post.Created)
-			if err != nil {
-				log.Println(err)
-			}
 
 			if parent.Valid {
 				post.Parent = parent.Int64
@@ -155,7 +140,6 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
-	log.Println("GET /thread/{slug_or_id}/details")
 	SLUG := ctx.UserValue("slug_or_id").(string)
 	id, err := strconv.Atoi(SLUG)
 	var row *sql.Row
@@ -170,7 +154,6 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 			thr.Slug = swag.String
 		}
 		if thr.ID == 0 {
-			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find thread by ID: "}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
@@ -185,7 +168,6 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 			SLUG)
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
 		if err != nil {
-			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find thread by slug: "}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
@@ -201,7 +183,6 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
-	log.Println("POST /thread/{slug_or_id}/details")
 	slugOrID := ctx.UserValue("slug_or_id").(string)
 	var thr ResThread
 	easyjson.Unmarshal(ctx.PostBody(), &thr)
@@ -223,17 +204,13 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 	query += " RETURNING id, title, author, forum, message, votes, slug, created;"
 
 	row := thread.DB.QueryRow(query, args...)
-	err = row.Scan()
-	if err != nil {
-		log.Println(err)
-	}
+	row.Scan()
 	swag := sql.NullString{}
 	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swag, &thr.Created)
 	if swag.Valid {
 		thr.Slug = swag.String
 	}
 	if err != nil {
-		log.Println(err)
 		errMsg := &user.ErrMsg{Message: "Can't find thread by slug: "}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
@@ -248,7 +225,6 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
-	log.Println("GET /thread/{slug_or_id}/posts")
 	slugOrID := ctx.UserValue("slug_or_id").(string)
 	limit := string(ctx.QueryArgs().Peek("limit"))
 	since := string(ctx.QueryArgs().Peek("since"))
@@ -421,20 +397,12 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
     `
 
 	}
-	rows, err := thread.DB.Query(query, args...)
-	if err != nil {
-		log.Println(err)
-	}
+	rows, _ := thread.DB.Query(query, args...)
 	defer rows.Close()
 	result := make(ResThreads, 0)
-	//found := false
 	for rows.Next() {
-		//found = true
 		var thr ResThread
-		err := rows.Scan(&thr.ID, &thr.Thread, &thr.Created, &thr.Message, &thr.Parent, &thr.Author, &thr.Forum)
-		if err != nil {
-			log.Println(err)
-		}
+		rows.Scan(&thr.ID, &thr.Thread, &thr.Created, &thr.Message, &thr.Parent, &thr.Author, &thr.Forum)
 		result = append(result, thr)
 	}
 	res, _ := easyjson.Marshal(result)
@@ -444,7 +412,6 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
-	log.Println("POST /thread/{slug_or_id}/vote")
 	threadSlug := ctx.UserValue("slug_or_id").(string)
 	var row *sql.Row
 	id, err := strconv.Atoi(threadSlug)
@@ -452,20 +419,14 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 	if err == nil {
 		swag := sql.NullString{}
 		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title from threads where id=$1`, id)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title)
-		if err != nil {
-			log.Println(err)
-		}
+		row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title)
 		if swag.Valid {
 			thr.Slug = swag.String
 		}
 	} else {
 		id = -1
 		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title from threads where slug=$1`, threadSlug)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
-		if err != nil {
-			log.Println(err)
-		}
+		row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
 	}
 	if len(threadSlug) != 0 {
 		vote := &Vote{}
@@ -490,7 +451,6 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 		row = thread.DB.QueryRow(`SELECT votes FROM threads WHERE id=$1`, thr.ID)
 		err = row.Scan(&thr.Votes)
 		if err != nil {
-			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find thread by slug: " + threadSlug}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
@@ -504,7 +464,6 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 		ctx.SetStatusCode(200)
 		ctx.SetContentType("application/json")
 	} else {
-		log.Println("Here")
 		result := user.ErrMsg{Message: "Can't find thread by slug: "}
 		res, _ := easyjson.Marshal(result)
 		ctx.SetBody(res)

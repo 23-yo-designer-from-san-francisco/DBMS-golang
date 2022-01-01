@@ -7,7 +7,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
-	"log"
 )
 
 //easyjson:json
@@ -31,7 +30,6 @@ type ErrMsg struct {
 }
 
 func (user *User) Create(ctx *fasthttp.RequestCtx) {
-	log.Println("POST /user/{nickname}/create")
 	request := &Req{}
 	request.Nickname = ctx.UserValue("nickname").(string)
 	easyjson.Unmarshal(ctx.PostBody(), request)
@@ -43,19 +41,13 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 		request.Email,
 	)
 	if err != nil {
-		rows, err := user.DB.Query("SELECT nickname, fullname, about, email "+
+		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
 			"FROM users "+
 			"WHERE nickname=$1 or email=$2",
 			request.Nickname,
 			request.Email)
-		if err != nil {
-			log.Println(err)
-		}
 		defer func(rows *sql.Rows) {
-			err := rows.Close()
-			if err != nil {
-				log.Println(err)
-			}
+			rows.Close()
 		}(rows)
 		results := make(Reqs, 0)
 		for rows.Next() {
@@ -76,16 +68,12 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	ctx.Response.SetStatusCode(201)
-	resp, err := easyjson.Marshal(request)
-	if err != nil {
-		log.Println(err)
-	}
+	resp, _ := easyjson.Marshal(request)
 	ctx.Response.SetBody(resp)
 	ctx.SetContentType("application/json")
 }
 
 func (user *User) Profile(ctx *fasthttp.RequestCtx) {
-	log.Println("GET /user/{nickname}/profile")
 	request := &Req{}
 	nickname := ctx.UserValue("nickname")
 	rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
@@ -113,13 +101,9 @@ func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 }
 
 func (user *User) Update(ctx *fasthttp.RequestCtx) {
-	log.Println("POST /user/{nickname}/profile")
 	request := &Req{}
 	nickname := ctx.UserValue("nickname").(string)
-	err := easyjson.Unmarshal(ctx.PostBody(), request)
-	if err != nil {
-		log.Println(err)
-	}
+	easyjson.Unmarshal(ctx.PostBody(), request)
 	if len(request.About) == 0 && len(request.Email) == 0 && len(request.Nickname) == 0 && len(request.Fullname) == 0 {
 		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email FROM users WHERE nickname=$1", nickname)
 		defer rows.Close()
@@ -133,6 +117,7 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 	}
 	request.Nickname = nickname
 	var row *sql.Row
+	var err error
 	if len(request.Email) != 0 {
 		row = user.DB.QueryRow("UPDATE users "+
 			"SET fullname=CASE WHEN $1 <> '' THEN $1 ELSE fullname END,"+
