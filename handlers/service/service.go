@@ -20,6 +20,7 @@ type Res struct {
 }
 
 func (service *Service) Clear(ctx *fasthttp.RequestCtx) {
+	log.Println("POST /service/clear")
 	_, err := service.DB.Exec(`TRUNCATE users, forums, threads, posts, votes, forum_users;`)
 	if err != nil {
 		log.Println(err)
@@ -27,6 +28,7 @@ func (service *Service) Clear(ctx *fasthttp.RequestCtx) {
 }
 
 func (service *Service) Status(ctx *fasthttp.RequestCtx) {
+	log.Println("GET /service/status")
 	var status Res
 	row := service.DB.QueryRow(`SELECT * FROM
 		(SELECT COUNT(*) FROM users) as user_count,

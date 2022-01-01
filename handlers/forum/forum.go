@@ -43,9 +43,11 @@ type ThreadReq struct {
 type ThreadsReq []ThreadReq
 
 func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
+	log.Println("POST /forum/create")
 	request := &Req{}
 	easyjson.Unmarshal(ctx.PostBody(), request)
 	usr, err := forum.DB.Query(`SELECT nickname FROM users WHERE nickname=$1`, request.User)
+	defer usr.Close()
 	if usr.Next() {
 		usr.Scan(&request.User)
 	}
@@ -62,10 +64,10 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 				"FROM forums "+
 				"WHERE slug=$1",
 				request.Slug)
+			defer rows.Close()
 			if rows.Next() {
 				rows.Scan(&request.Slug, &request.Title, &request.User)
 			}
-			rows.Close()
 			result, _ := easyjson.Marshal(request)
 			ctx.SetBody(result)
 			ctx.SetStatusCode(409)
@@ -87,12 +89,14 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
+	log.Println("GET /forum/{slug}/details")
 	request := &Req{}
 	request.Slug = ctx.UserValue("slug").(string)
 	rows, _ := forum.DB.Query(`SELECT slug, title, "user", posts, threads `+
 		"FROM forums "+
 		"WHERE slug=$1",
 		request.Slug)
+	defer rows.Close()
 	if rows.Next() {
 		err := rows.Scan(&request.Slug, &request.Title, &request.User, &request.Posts, &request.Threads)
 		if err != nil {
@@ -114,6 +118,7 @@ func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
+	log.Println("POST /forum/{slug}/create")
 	SLUG := ctx.UserValue("slug").(string) // SWAG форума, который точно должен быть
 	thr := &ThreadReq{}
 	easyjson.Unmarshal(ctx.PostBody(), thr)
@@ -143,10 +148,14 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		switch err.Code {
 		case "23505":
 			thread := &ThreadReq{}
+			swag := sql.NullString{}
 			forum.DB.QueryRow("SELECT author, created, forum, id, message, slug, title "+
 				"FROM threads "+
 				"WHERE slug=$1", thr.Slug).Scan(&thread.Author,
-				&thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
+				&thread.Created, &thread.Forum, &thread.ID, &thread.Message, &swag, &thread.Title)
+			if swag.Valid {
+				thread.Slug = swag.String
+			}
 			res, _ := easyjson.Marshal(thread)
 			ctx.SetBody(res)
 			ctx.SetStatusCode(409)
@@ -174,6 +183,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
+	log.Println("GET /forum/{slug}/users")
 	SLUG := string(ctx.UserValue("slug").(string))
 	desc := string(ctx.QueryArgs().Peek("desc"))
 	limit := string(ctx.QueryArgs().Peek("limit"))
@@ -203,6 +213,7 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 
 	rows, err := forum.DB.Query(`SELECT about, email, fullname, nickname FROM users u
 										JOIN forum_users fu ON fu.user_nickname = u.nickname WHERE forum_swag = $1`+queryOpts, SLUG)
+	defer rows.Close()
 	if err != nil {
 		log.Println(err)
 	}
@@ -236,7 +247,9 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
+	log.Println("GET /forum/{slug}/threads")
 	SLUG := ctx.UserValue("slug").(string)
+	log.Println(SLUG)
 	desc := string(ctx.QueryArgs().Peek("desc"))
 	limit := ctx.QueryArgs().Peek("limit")
 	since := ctx.QueryArgs().Peek("since")
@@ -248,6 +261,7 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	}
 	var rows *sql.Rows
 	var err error
+
 	if len(limit) != 0 {
 		if len(since) == 0 {
 			if desc == "true" {
@@ -271,14 +285,21 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 			log.Println(err)
 		}
 		defer rows.Close()
-		found := false
+		thr := &ThreadReq{}
 		for rows.Next() {
-			found = true
 			thr := &ThreadReq{}
-			rows.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &thr.Slug, &thr.Created)
+			swagga := sql.NullString{}
+			err := rows.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swagga, &thr.Created)
+			if err != nil {
+				log.Println(err)
+			}
+			if swagga.Valid {
+				thr.Slug = swagga.String
+			}
 			threads = append(threads, *thr)
 		}
-		if !found {
+		log.Println(len(threads))
+		if thr.ID == 0 {
 			forum, _ := forum.DB.Query("SELECT id FROM forums WHERE slug=$1", SLUG)
 			if !forum.Next() {
 				errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find forum by slug: %s", SLUG)}
@@ -300,15 +321,28 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	}
 
 	thr := &ThreadReq{}
+	swag := sql.NullString{}
 	usr, _ := forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
 		"FROM threads WHERE forum=$1", SLUG)
-	if usr.Next() {
-		usr.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &thr.Slug, &thr.Created)
-	} else {
+	usr.Next()
+	err = usr.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swag, &thr.Created)
+	if err != nil {
+		log.Println(err)
+	}
+	if swag.Valid {
+		thr.Slug = swag.String
+	}
+
+	if thr.ID == 0 {
 		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find forum by slug: %s", SLUG)}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
 		ctx.SetStatusCode(404)
 		ctx.SetContentType("application/json")
 	}
+	errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find forum by slug: %s", SLUG)}
+	response, _ := easyjson.Marshal(errMsg)
+	ctx.SetBody(response)
+	ctx.SetStatusCode(404)
+	ctx.SetContentType("application/json")
 }

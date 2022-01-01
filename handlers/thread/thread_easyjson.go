@@ -304,7 +304,9 @@ func easyjson2d00218DecodeDBMSHandlersThread3(in *jlexer.Lexer, out *ResThread) 
 		case "thread":
 			out.Thread = int(in.Int())
 		case "created":
-			out.Created = string(in.String())
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Created).UnmarshalJSON(data))
+			}
 		case "slug":
 			out.Slug = string(in.String())
 		case "title":
@@ -391,7 +393,7 @@ func easyjson2d00218EncodeDBMSHandlersThread3(out *jwriter.Writer, in ResThread)
 		}
 		out.Int(int(in.Thread))
 	}
-	if in.Created != "" {
+	if true {
 		const prefix string = ",\"created\":"
 		if first {
 			first = false
@@ -399,7 +401,7 @@ func easyjson2d00218EncodeDBMSHandlersThread3(out *jwriter.Writer, in ResThread)
 		} else {
 			out.RawString(prefix)
 		}
-		out.String(string(in.Created))
+		out.Raw((in.Created).MarshalJSON())
 	}
 	if in.Slug != "" {
 		const prefix string = ",\"slug\":"

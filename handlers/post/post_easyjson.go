@@ -40,7 +40,9 @@ func easyjson5a72dc82DecodeDBMSHandlersPost(in *jlexer.Lexer, out *Thread) {
 		case "author":
 			out.Author = string(in.String())
 		case "created":
-			out.Created = string(in.String())
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Created).UnmarshalJSON(data))
+			}
 		case "forum":
 			out.Forum = string(in.String())
 		case "id":
@@ -51,6 +53,8 @@ func easyjson5a72dc82DecodeDBMSHandlersPost(in *jlexer.Lexer, out *Thread) {
 			out.Slug = string(in.String())
 		case "title":
 			out.Title = string(in.String())
+		case "votes":
+			out.Votes = int(in.Int())
 		default:
 			in.SkipRecursive()
 		}
@@ -73,7 +77,7 @@ func easyjson5a72dc82EncodeDBMSHandlersPost(out *jwriter.Writer, in Thread) {
 	{
 		const prefix string = ",\"created\":"
 		out.RawString(prefix)
-		out.String(string(in.Created))
+		out.Raw((in.Created).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"forum\":"
@@ -99,6 +103,11 @@ func easyjson5a72dc82EncodeDBMSHandlersPost(out *jwriter.Writer, in Thread) {
 		const prefix string = ",\"title\":"
 		out.RawString(prefix)
 		out.String(string(in.Title))
+	}
+	{
+		const prefix string = ",\"votes\":"
+		out.RawString(prefix)
+		out.Int(int(in.Votes))
 	}
 	out.RawByte('}')
 }
@@ -159,6 +168,8 @@ func easyjson5a72dc82DecodeDBMSHandlersPost1(in *jlexer.Lexer, out *ResPost) {
 			out.Thread = int(in.Int())
 		case "isEdited":
 			out.IsEdited = bool(in.Bool())
+		case "parent":
+			out.Parent = int64(in.Int64())
 		default:
 			in.SkipRecursive()
 		}
@@ -207,6 +218,11 @@ func easyjson5a72dc82EncodeDBMSHandlersPost1(out *jwriter.Writer, in ResPost) {
 		const prefix string = ",\"isEdited\":"
 		out.RawString(prefix)
 		out.Bool(bool(in.IsEdited))
+	}
+	{
+		const prefix string = ",\"parent\":"
+		out.RawString(prefix)
+		out.Int64(int64(in.Parent))
 	}
 	out.RawByte('}')
 }
@@ -365,6 +381,7 @@ func easyjson5a72dc82Decode(in *jlexer.Lexer, out *struct {
 	Message  string `json:"message"`
 	Thread   int    `json:"thread"`
 	IsEdited bool   `json:"isEdited"`
+	Parent   int64  `json:"parent"`
 }) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
@@ -398,6 +415,8 @@ func easyjson5a72dc82Decode(in *jlexer.Lexer, out *struct {
 			out.Thread = int(in.Int())
 		case "isEdited":
 			out.IsEdited = bool(in.Bool())
+		case "parent":
+			out.Parent = int64(in.Int64())
 		default:
 			in.SkipRecursive()
 		}
@@ -416,6 +435,7 @@ func easyjson5a72dc82Encode(out *jwriter.Writer, in struct {
 	Message  string `json:"message"`
 	Thread   int    `json:"thread"`
 	IsEdited bool   `json:"isEdited"`
+	Parent   int64  `json:"parent"`
 }) {
 	out.RawByte('{')
 	first := true
@@ -454,6 +474,11 @@ func easyjson5a72dc82Encode(out *jwriter.Writer, in struct {
 		const prefix string = ",\"isEdited\":"
 		out.RawString(prefix)
 		out.Bool(bool(in.IsEdited))
+	}
+	{
+		const prefix string = ",\"parent\":"
+		out.RawString(prefix)
+		out.Int64(int64(in.Parent))
 	}
 	out.RawByte('}')
 }

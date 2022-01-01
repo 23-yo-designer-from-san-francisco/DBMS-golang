@@ -7,6 +7,7 @@ import (
 	"github.com/valyala/fasthttp"
 	"log"
 	"strings"
+	"time"
 )
 
 type Post struct {
@@ -23,13 +24,14 @@ type Author struct {
 
 //easyjson:json
 type Thread struct {
-	Author  string `json:"author"`
-	Created string `json:"created"`
-	Forum   string `json:"forum"`
-	ID      int    `json:"id"`
-	Message string `json:"message"`
-	Slug    string `json:"slug"`
-	Title   string `json:"title"`
+	Author  string    `json:"author"`
+	Created time.Time `json:"created"`
+	Forum   string    `json:"forum"`
+	ID      int       `json:"id"`
+	Message string    `json:"message"`
+	Slug    string    `json:"slug"`
+	Title   string    `json:"title"`
+	Votes   int       `json:"votes"`
 }
 
 type Forum struct {
@@ -50,6 +52,7 @@ type Res struct {
 		Message  string `json:"message"`
 		Thread   int    `json:"thread"`
 		IsEdited bool   `json:"isEdited"`
+		Parent   int64  `json:"parent"`
 	} `json:"post"`
 	Author *Author `json:"author"`
 	Thread *Thread `json:"thread"`
@@ -65,18 +68,23 @@ type ResPost struct {
 	Message  string `json:"message"`
 	Thread   int    `json:"thread"`
 	IsEdited bool   `json:"isEdited"`
+	Parent   int64  `json:"parent"`
 }
 
 func (post *Post) Details(ctx *fasthttp.RequestCtx) {
+	log.Println("GET /post/{id}/details")
 	ID := ctx.UserValue("id")
 	related := string(ctx.QueryArgs().Peek("related"))
 	log.Println(related)
 	var resultPost Res
 
-	row := post.DB.QueryRow(`SELECT author, created, forum, id, message, thread, isedited FROM posts WHERE id=$1`, ID)
-
+	row := post.DB.QueryRow(`SELECT author, created, forum, id, message, thread, isedited, parent FROM posts WHERE id=$1`, ID)
+	par := sql.NullInt64{}
 	err := row.Scan(&resultPost.Post.Author, &resultPost.Post.Created, &resultPost.Post.Forum,
-		&resultPost.Post.ID, &resultPost.Post.Message, &resultPost.Post.Thread, &resultPost.Post.IsEdited)
+		&resultPost.Post.ID, &resultPost.Post.Message, &resultPost.Post.Thread, &resultPost.Post.IsEdited, &par)
+	if par.Valid {
+		resultPost.Post.Parent = par.Int64
+	}
 	if err != nil {
 		log.Println(err)
 		errMsg := &user.ErrMsg{Message: "Can't find post with id: "}
@@ -98,20 +106,34 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 
 	if strings.Contains(related, "thread") {
 		resultPost.Thread = &Thread{}
-		thread := post.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title FROM threads WHERE id=$1`, resultPost.Post.Thread)
+		swag := sql.NullString{}
+		thread := post.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes FROM threads WHERE id=$1`, resultPost.Post.Thread)
 		err := thread.Scan(&resultPost.Thread.Author, &resultPost.Thread.Created, &resultPost.Thread.Forum, &resultPost.Thread.ID, &resultPost.Thread.Message,
-			&resultPost.Thread.Slug, &resultPost.Thread.Title)
+			&swag, &resultPost.Thread.Title, &resultPost.Thread.Votes)
+		log.Println("thr")
+		log.Println(swag.String)
+		log.Println("thr")
+
 		if err != nil {
 			log.Println(err)
+		}
+		if swag.Valid {
+			resultPost.Thread.Slug = swag.String
+			log.Println(swag.String)
+			log.Println(resultPost.Thread.Slug)
 		}
 	}
 
 	if strings.Contains(related, "forum") {
 		resultPost.Forum = &Forum{}
+		swag := sql.NullString{}
 		forum := post.DB.QueryRow(`SELECT posts, slug, threads, title, "user" FROM forums WHERE slug=$1`, resultPost.Post.Forum)
-		err := forum.Scan(&resultPost.Forum.Posts, &resultPost.Forum.Slug, &resultPost.Forum.Threads, &resultPost.Forum.Title, &resultPost.Forum.User)
+		err := forum.Scan(&resultPost.Forum.Posts, &swag, &resultPost.Forum.Threads, &resultPost.Forum.Title, &resultPost.Forum.User)
 		if err != nil {
 			log.Println(err)
+		}
+		if swag.Valid {
+			resultPost.Forum.Slug = swag.String
 		}
 	}
 	res, _ := easyjson.Marshal(resultPost)
@@ -121,6 +143,7 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (post *Post) UpdateMessage(ctx *fasthttp.RequestCtx) {
+	log.Println("POST /post/{id}/details")
 	ID := ctx.UserValue("id")
 	var resultPost ResPost
 	easyjson.Unmarshal(ctx.PostBody(), &resultPost)

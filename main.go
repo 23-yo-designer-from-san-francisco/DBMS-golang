@@ -14,12 +14,15 @@ import (
 )
 
 func main() {
-	connStr := "dbname=postgres sslmode=disable"
+	connStr := "port=54321 dbname=postgres sslmode=disable"
 	var err error
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	db.SetMaxOpenConns(500)
+	db.SetMaxIdleConns(500)
 
 	r := router.New()
 

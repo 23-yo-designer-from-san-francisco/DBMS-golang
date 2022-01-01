@@ -10,21 +10,22 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //easyjson:json
 type ResThread struct {
-	ID       int    `json:"id,omitempty"`
-	Parent   int64  `json:"parent,omitempty"`
-	Author   string `json:"author,omitempty"`
-	Message  string `json:"message,omitempty"`
-	IsEdited bool   `json:"isEdited,omitempty"`
-	Forum    string `json:"forum,omitempty"`
-	Thread   int    `json:"thread,omitempty"`
-	Created  string `json:"created,omitempty"`
-	Slug     string `json:"slug,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Votes    int    `json:"votes,omitempty"`
+	ID       int       `json:"id,omitempty"`
+	Parent   int64     `json:"parent,omitempty"`
+	Author   string    `json:"author,omitempty"`
+	Message  string    `json:"message,omitempty"`
+	IsEdited bool      `json:"isEdited,omitempty"`
+	Forum    string    `json:"forum,omitempty"`
+	Thread   int       `json:"thread,omitempty"`
+	Created  time.Time `json:"created,omitempty"`
+	Slug     string    `json:"slug,omitempty"`
+	Title    string    `json:"title,omitempty"`
+	Votes    int       `json:"votes,omitempty"`
 }
 
 type Thread struct {
@@ -41,6 +42,7 @@ type Vote struct {
 type ResThreads []ResThread
 
 func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
+	//log.Println("POST /thread/{slug_or_id}/create")
 	SLUG := ctx.UserValue("slug_or_id").(string)
 	id, err := strconv.Atoi(SLUG)
 	var row *sql.Row
@@ -49,16 +51,16 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 	if err == nil {
 		row = thread.DB.QueryRow(`SELECT title, forum from threads where id=$1`, id)
 		err = row.Scan(&forumTitle, &forumSwag)
-		if err != nil {
-			log.Println(err)
-		}
+		//if err != nil {
+		//log.Println(err)
+		//}
 	} else {
 		id = -1
 		row = thread.DB.QueryRow(`SELECT title, forum, id from threads where slug=$1`, SLUG)
 		err = row.Scan(&forumTitle, &forumSwag, &id)
-		if err != nil {
-			log.Println(err)
-		}
+		//if err != nil {
+		//	log.Println(err)
+		//}
 	}
 
 	if len(forumTitle) != 0 {
@@ -90,6 +92,7 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		usersQuery = strings.TrimSuffix(usersQuery, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
 		rows, err := thread.DB.Query(query, values...)
+		defer rows.Close()
 		if err != nil {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Parent post was created in another thread"}
@@ -99,10 +102,10 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 			ctx.SetContentType("application/json")
 			return
 		}
-		defer rows.Close()
 
 		usersQuery += " ON CONFLICT DO NOTHING"
 		userRows, err := thread.DB.Query(usersQuery, forumUsers...)
+		defer userRows.Close()
 		if err != nil {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
@@ -112,7 +115,6 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 			ctx.SetContentType("application/json")
 			return
 		}
-		defer userRows.Close()
 
 		resPosts := make(ResThreads, 0)
 		for rows.Next() {
@@ -153,15 +155,20 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
+	log.Println("GET /thread/{slug_or_id}/details")
 	SLUG := ctx.UserValue("slug_or_id").(string)
 	id, err := strconv.Atoi(SLUG)
 	var row *sql.Row
 	thr := &ResThread{}
 	if err == nil {
+		swag := sql.NullString{}
 		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes
 										from threads where id=$1`,
 			id)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title, &thr.Votes)
+		if swag.Valid {
+			thr.Slug = swag.String
+		}
 		if thr.ID == 0 {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find thread by ID: "}
@@ -173,7 +180,7 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 		}
 	} else {
 		id = -1
-		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes
+		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, COALESCE(slug, ''), title, votes
 										from threads where slug=$1`,
 			SLUG)
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
@@ -194,6 +201,7 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
+	log.Println("POST /thread/{slug_or_id}/details")
 	slugOrID := ctx.UserValue("slug_or_id").(string)
 	var thr ResThread
 	easyjson.Unmarshal(ctx.PostBody(), &thr)
@@ -219,7 +227,11 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 	if err != nil {
 		log.Println(err)
 	}
-	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &thr.Slug, &thr.Created)
+	swag := sql.NullString{}
+	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swag, &thr.Created)
+	if swag.Valid {
+		thr.Slug = swag.String
+	}
 	if err != nil {
 		log.Println(err)
 		errMsg := &user.ErrMsg{Message: "Can't find thread by slug: "}
@@ -236,6 +248,7 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
+	log.Println("GET /thread/{slug_or_id}/posts")
 	slugOrID := ctx.UserValue("slug_or_id").(string)
 	limit := string(ctx.QueryArgs().Peek("limit"))
 	since := string(ctx.QueryArgs().Peek("since"))
@@ -412,6 +425,7 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 	if err != nil {
 		log.Println(err)
 	}
+	defer rows.Close()
 	result := make(ResThreads, 0)
 	//found := false
 	for rows.Next() {
@@ -430,15 +444,20 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 }
 
 func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
+	log.Println("POST /thread/{slug_or_id}/vote")
 	threadSlug := ctx.UserValue("slug_or_id").(string)
 	var row *sql.Row
 	id, err := strconv.Atoi(threadSlug)
 	thr := &ResThread{}
 	if err == nil {
+		swag := sql.NullString{}
 		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title from threads where id=$1`, id)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title)
 		if err != nil {
 			log.Println(err)
+		}
+		if swag.Valid {
+			thr.Slug = swag.String
 		}
 	} else {
 		id = -1

@@ -31,6 +31,7 @@ type ErrMsg struct {
 }
 
 func (user *User) Create(ctx *fasthttp.RequestCtx) {
+	log.Println("POST /user/{nickname}/create")
 	request := &Req{}
 	request.Nickname = ctx.UserValue("nickname").(string)
 	easyjson.Unmarshal(ctx.PostBody(), request)
@@ -84,6 +85,7 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 }
 
 func (user *User) Profile(ctx *fasthttp.RequestCtx) {
+	log.Println("GET /user/{nickname}/profile")
 	request := &Req{}
 	nickname := ctx.UserValue("nickname")
 	rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
@@ -111,6 +113,7 @@ func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 }
 
 func (user *User) Update(ctx *fasthttp.RequestCtx) {
+	log.Println("POST /user/{nickname}/profile")
 	request := &Req{}
 	nickname := ctx.UserValue("nickname").(string)
 	err := easyjson.Unmarshal(ctx.PostBody(), request)
@@ -119,9 +122,9 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 	}
 	if len(request.About) == 0 && len(request.Email) == 0 && len(request.Nickname) == 0 && len(request.Fullname) == 0 {
 		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email FROM users WHERE nickname=$1", nickname)
+		defer rows.Close()
 		rows.Next()
 		rows.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
-		defer rows.Close()
 		response, _ := easyjson.Marshal(request)
 		ctx.SetBody(response)
 		ctx.SetStatusCode(200)
