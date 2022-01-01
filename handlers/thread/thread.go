@@ -223,7 +223,7 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 	query += " RETURNING id, title, author, forum, message, votes, slug, created;"
 
 	row := thread.DB.QueryRow(query, args...)
-	err = row.Err()
+	err = row.Scan()
 	if err != nil {
 		log.Println(err)
 	}

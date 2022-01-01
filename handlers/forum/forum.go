@@ -301,6 +301,7 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 		log.Println(len(threads))
 		if thr.ID == 0 {
 			forum, _ := forum.DB.Query("SELECT id FROM forums WHERE slug=$1", SLUG)
+			defer forum.Close()
 			if !forum.Next() {
 				errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find forum by slug: %s", SLUG)}
 				response, _ := easyjson.Marshal(errMsg)
@@ -324,6 +325,7 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	swag := sql.NullString{}
 	usr, _ := forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
 		"FROM threads WHERE forum=$1", SLUG)
+	defer usr.Close()
 	usr.Next()
 	err = usr.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swag, &thr.Created)
 	if err != nil {
