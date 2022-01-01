@@ -7,14 +7,21 @@ import (
 	"DBMS/handlers/thread"
 	"DBMS/handlers/user"
 	"database/sql"
+	"fmt"
 	"github.com/fasthttp/router"
 	_ "github.com/lib/pq"
 	"github.com/valyala/fasthttp"
 	"log"
+	"os"
 )
 
 func main() {
-	connStr := "port=54321 dbname=postgrid sslmode=disable"
+	connStr := fmt.Sprintf("port=%s dbname=%s username=%s password=%s sslmode=disable",
+		os.Getenv("DBPORT"),
+		os.Getenv("DBNAME"),
+		os.Getenv("DBUSER"),
+		os.Getenv("DBPASS"),
+	)
 	var err error
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -24,31 +31,31 @@ func main() {
 	r := router.New()
 
 	forum := &forum.Forum{DB: db}
-	r.POST("/forum/create", forum.Create)
-	r.GET("/forum/{slug}/details", forum.Details)
-	r.POST("/forum/{slug}/create", forum.CreateThread)
-	r.GET("/forum/{slug}/users", forum.Users)
-	r.GET("/forum/{slug}/threads", forum.GetThreads)
+	r.POST("/api/forum/create", forum.Create)
+	r.GET("/api/forum/{slug}/details", forum.Details)
+	r.POST("/api/forum/{slug}/create", forum.CreateThread)
+	r.GET("/api/forum/{slug}/users", forum.Users)
+	r.GET("/api/forum/{slug}/threads", forum.GetThreads)
 
 	post := &post.Post{DB: db}
-	r.GET("/post/{id}/details", post.Details)
-	r.POST("/post/{id}/details", post.UpdateMessage)
+	r.GET("/api/post/{id}/details", post.Details)
+	r.POST("/api/post/{id}/details", post.UpdateMessage)
 
 	service := &service.Service{DB: db}
-	r.POST("/service/clear", service.Clear)
-	r.GET("/service/status", service.Status)
+	r.POST("/api/service/clear", service.Clear)
+	r.GET("/api/service/status", service.Status)
 
 	thread := &thread.Thread{DB: db}
-	r.POST("/thread/{slug_or_id}/create", thread.Create)
-	r.GET("/thread/{slug_or_id}/details", thread.Details)
-	r.POST("/thread/{slug_or_id}/details", thread.Update)
-	r.GET("/thread/{slug_or_id}/posts", thread.GetPosts)
-	r.POST("/thread/{slug_or_id}/vote", thread.Vote)
+	r.POST("/api/thread/{slug_or_id}/create", thread.Create)
+	r.GET("/api/thread/{slug_or_id}/details", thread.Details)
+	r.POST("/api/thread/{slug_or_id}/details", thread.Update)
+	r.GET("/api/thread/{slug_or_id}/posts", thread.GetPosts)
+	r.POST("/api/thread/{slug_or_id}/vote", thread.Vote)
 
 	user := &user.User{DB: db}
-	r.POST("/user/{nickname}/create", user.Create)
-	r.GET("/user/{nickname}/profile", user.Profile)
-	r.POST("/user/{nickname}/profile", user.Update)
+	r.POST("/api/user/{nickname}/create", user.Create)
+	r.GET("/api/user/{nickname}/profile", user.Profile)
+	r.POST("/api/user/{nickname}/profile", user.Update)
 
 	log.Fatal(fasthttp.ListenAndServe(":5000", r.Handler))
 }
