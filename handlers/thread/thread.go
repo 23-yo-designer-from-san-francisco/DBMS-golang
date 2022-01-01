@@ -167,10 +167,14 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 		}
 	} else {
 		id = -1
-		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, COALESCE(slug, ''), title, votes
+		swag := sql.NullString{}
+		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes
 										from threads where slug=$1`,
 			SLUG)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title, &thr.Votes)
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title, &thr.Votes)
+		if swag.Valid {
+			thr.Slug = swag.String
+		}
 		if err != nil {
 			result := user.ErrMsg{Message: "Can't find thread by slug: "}
 			res, _ := easyjson.Marshal(result)
@@ -243,9 +247,9 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 	ID, err := strconv.Atoi(slugOrID)
 	var thr *sql.Row
 	if err == nil {
-		thr = thread.DB.QueryRow(`SELECT count(*) FROM threads WHERE id=$1`, ID)
+		thr = thread.DB.QueryRow(`SELECT COUNT(1) FROM threads WHERE id=$1`, ID)
 	} else {
-		thr = thread.DB.QueryRow(`SELECT count(*) FROM threads WHERE slug=$1`, slugOrID)
+		thr = thread.DB.QueryRow(`SELECT COUNT(1) FROM threads WHERE slug=$1`, slugOrID)
 	}
 	var threadFound int
 	thr.Scan(&threadFound)

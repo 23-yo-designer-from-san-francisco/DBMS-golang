@@ -25,10 +25,10 @@ func (service *Service) Clear(ctx *fasthttp.RequestCtx) {
 func (service *Service) Status(ctx *fasthttp.RequestCtx) {
 	var status Res
 	row := service.DB.QueryRow(`SELECT * FROM
-		(SELECT COUNT(*) FROM users) as user_count,
- 		(SELECT COUNT(*) FROM forums) as forum_count,
-		(SELECT COUNT(*) FROM threads) as thread_count,
-		(SELECT COUNT(*) FROM posts) as post_count;`)
+		(SELECT COUNT(1) FROM users) as user_count,
+ 		(SELECT COUNT(1) FROM forums) as forum_count,
+		(SELECT COUNT(1) FROM threads) as thread_count,
+		(SELECT COUNT(1) FROM posts) as post_count;`)
 	row.Scan(&status.User, &status.Forum, &status.Thread, &status.Post)
 	res, _ := easyjson.Marshal(status)
 	ctx.SetBody(res)

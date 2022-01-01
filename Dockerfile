@@ -22,7 +22,7 @@ RUN /etc/init.d/postgresql start &&\
 
 RUN echo "local   all             postgres                                peer\nlocal   all             all                                     md5\nhost    all             all             127.0.0.1/32            scram-sha-256\nhost    all             all             0.0.0.0/0               md5" > /etc/postgresql/14/main/pg_hba.conf
 RUN echo "listen_addresses='*'" >> /etc/postgresql/14/main/postgresql.conf
-RUN echo "synchronous_commit = off\nfsync = off\nshared_buffers = 1GB\nunix_socket_directories = '/var/run/postgresql'\nunix_socket_permissions = 0777" >> /etc/postgresql/14/main/postgresql.conf
+RUN echo "synchronous_commit = off\nfsync = off\nshared_buffers = 1GB\nwork_mem=512MB\nunix_socket_directories = '/var/run/postgresql'\nunix_socket_permissions = 0777" >> /etc/postgresql/14/main/postgresql.conf
 
 EXPOSE 5432
 
@@ -42,4 +42,4 @@ ENV DBUSER docker
 ENV DBPASS docker
 ENV PGPASSWORD docker
 
-CMD service postgresql start && psql -h localhost -d docker -U docker -p 5432 -a -q -f ./db/init.sql && /usr/local/go/bin/go run main.go
+CMD service postgresql start && psql -h localhost -d docker -U docker -p 5432 -a -q -f ./db/init.sql && /usr/local/go/bin/go build main.go && ./main
