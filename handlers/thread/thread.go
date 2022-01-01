@@ -82,7 +82,9 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		usersQuery = strings.TrimSuffix(usersQuery, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
 		rows, err := thread.DB.Query(query, values...)
-		defer rows.Close()
+		if rows != nil {
+			defer rows.Close()
+		}
 		if err != nil {
 			result := user.ErrMsg{Message: "Parent post was created in another thread"}
 			res, _ := easyjson.Marshal(result)
@@ -94,7 +96,9 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 
 		usersQuery += " ON CONFLICT DO NOTHING"
 		userRows, err := thread.DB.Query(usersQuery, forumUsers...)
-		defer userRows.Close()
+		if userRows != nil {
+			defer userRows.Close()
+		}
 		if err != nil {
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
 			res, _ := easyjson.Marshal(result)
@@ -204,13 +208,12 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 	query += " RETURNING id, title, author, forum, message, votes, slug, created;"
 
 	row := thread.DB.QueryRow(query, args...)
-	row.Scan()
 	swag := sql.NullString{}
 	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swag, &thr.Created)
 	if swag.Valid {
 		thr.Slug = swag.String
 	}
-	if err != nil {
+	if thr.ID == 0 {
 		errMsg := &user.ErrMsg{Message: "Can't find thread by slug: "}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
