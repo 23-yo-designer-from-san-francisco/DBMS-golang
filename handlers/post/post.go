@@ -124,7 +124,28 @@ func (post *Post) UpdateMessage(ctx *fasthttp.RequestCtx) {
 	ID := ctx.UserValue("id")
 	var resultPost ResPost
 	easyjson.Unmarshal(ctx.PostBody(), &resultPost)
-	row := post.DB.QueryRow(`UPDATE posts SET message=$1 WHERE id=$2 RETURNING author, created, forum, id, isedited, message, thread`, resultPost.Message, ID)
+	if len(resultPost.Message) == 0 {
+		row := post.DB.QueryRow(`SELECT author, created, forum, id, isedited, message, thread from posts WHERE id=$1`, ID)
+		err := row.Scan(&resultPost.Author, &resultPost.Created, &resultPost.Forum, &resultPost.ID, &resultPost.IsEdited, &resultPost.Message, &resultPost.Thread)
+		if err != nil {
+			log.Println(err)
+		}
+		res, _ := easyjson.Marshal(resultPost)
+		ctx.SetBody(res)
+		ctx.SetStatusCode(200)
+		ctx.SetContentType("application/json")
+		return
+	}
+	row := post.DB.QueryRow(`
+		UPDATE
+		posts
+		SET
+		message =$1
+		WHERE
+		id =$2
+		RETURNING
+		author, created, forum, id, isedited, message, thread
+		`, resultPost.Message, ID)
 	err := row.Scan(&resultPost.Author, &resultPost.Created, &resultPost.Forum, &resultPost.ID, &resultPost.IsEdited, &resultPost.Message, &resultPost.Thread)
 	if err != nil {
 		log.Println(err)
