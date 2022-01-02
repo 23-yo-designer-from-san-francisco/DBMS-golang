@@ -7,6 +7,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -81,11 +82,20 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		query = strings.TrimSuffix(query, ",")
 		usersQuery = strings.TrimSuffix(usersQuery, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
+		tx, err := thread.DB.Begin()
+		if err != nil {
+			log.Println(err)
+		}
 		rows, err := thread.DB.Query(query, values...)
 		if rows != nil {
 			defer rows.Close()
 		}
+		txErr := tx.Commit()
+		if txErr != nil {
+			log.Println(txErr)
+		}
 		if err != nil {
+			log.Println(err)
 			result := user.ErrMsg{Message: "Parent post was created in another thread"}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
@@ -95,13 +105,17 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		}
 
 		usersQuery += " ON CONFLICT DO NOTHING"
-		tx, err := thread.DB.Begin()
+		tx, err = thread.DB.Begin()
 		userRows, err := tx.Query(usersQuery, forumUsers...)
 		if userRows != nil {
 			defer userRows.Close()
 		}
-		tx.Commit()
+		txErr = tx.Commit()
+		if txErr != nil {
+			log.Println(txErr)
+		}
 		if err != nil {
+			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
