@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
+	"log"
 	"time"
 )
 
@@ -184,7 +185,10 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 
 	query := forum.DB.QueryRow(context.Background(), `SELECT id from forums WHERE slug=$1`, SLUG)
 	var forumID int
-	query.Scan(&forumID)
+	err := query.Scan(&forumID)
+	if err != nil {
+		log.Println(err)
+	}
 	var queryOpts string
 	if len(since) != 0 {
 		queryOpts += " AND nickname "
@@ -209,15 +213,21 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 	found := false
 	for rows.Next() {
 		found = true
-		var user user.Req
-		rows.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)
-		users = append(users, user)
+		var usr user.Req
+		err := rows.Scan(&usr.About, &usr.Email, &usr.Fullname, &usr.Nickname)
+		if err != nil {
+			log.Println(err)
+		}
+		users = append(users, usr)
 	}
 
 	if !found {
 		forum := forum.DB.QueryRow(context.Background(), `SELECT id FROM forums where slug=$1`, SLUG)
 		var forumID int
-		forum.Scan(&forumID)
+		err := forum.Scan(&forumID)
+		if err != nil {
+			log.Println(err)
+		}
 		if forumID == 0 {
 			errMsg := &user.ErrMsg{}
 			errMsg.Message = "Can't find forum by slug: " + SLUG
@@ -239,7 +249,7 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	SLUG := ctx.UserValue("slug").(string)
 	desc := string(ctx.QueryArgs().Peek("desc"))
 	limit := ctx.QueryArgs().Peek("limit")
-	since := ctx.QueryArgs().Peek("since")
+	since := string(ctx.QueryArgs().Peek("since"))
 	var limitQueryArg string
 	if len(limit) != 0 {
 		limitQueryArg = " LIMIT " + string(limit)
@@ -247,24 +257,28 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 		limitQueryArg = ""
 	}
 	var rows pgx.Rows
+	var err error
 
 	if len(limit) != 0 {
 		if len(since) == 0 {
 			if desc == "true" {
-				rows, _ = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
+				rows, err = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 					"FROM threads WHERE forum=$1 ORDER BY created DESC "+limitQueryArg, SLUG)
 			} else {
-				rows, _ = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
+				rows, err = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 					"FROM threads WHERE forum=$1 ORDER BY created ASC "+limitQueryArg, SLUG)
 			}
 		} else {
 			if desc == "true" {
-				rows, _ = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
+				rows, err = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 					"FROM threads WHERE forum=$1 AND created <= $2 ORDER BY created DESC "+limitQueryArg, SLUG, since)
 			} else {
-				rows, _ = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
+				rows, err = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 					"FROM threads WHERE forum=$1 AND created >= $2 ORDER BY created ASC "+limitQueryArg, SLUG, since)
 			}
+		}
+		if err != nil {
+			log.Println(err)
 		}
 		threads := make(ThreadsReq, 0)
 		defer rows.Close()

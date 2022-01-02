@@ -5,9 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"log"
@@ -460,7 +460,7 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
                 ON CONFLICT ON CONSTRAINT votes_user_thread_unique DO
                 UPDATE SET voice = $3 WHERE vote.voice <> $3`, vote.Nickname, thr.ID, vote.Voice)
 		err := row.Scan()
-		if err, ok := err.(*pq.Error); ok {
+		if err, ok := err.(*pgconn.PgError); ok {
 			switch err.Code {
 			case "23503":
 				result := user.ErrMsg{Message: "Can't find user by nickname: "}
