@@ -158,7 +158,9 @@ func easyjson5a72dc82DecodeDBMSHandlersPost1(in *jlexer.Lexer, out *ResPost) {
 		case "author":
 			out.Author = string(in.String())
 		case "created":
-			out.Created = string(in.String())
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Created).UnmarshalJSON(data))
+			}
 		case "forum":
 			out.Forum = string(in.String())
 		case "id":
@@ -193,7 +195,7 @@ func easyjson5a72dc82EncodeDBMSHandlersPost1(out *jwriter.Writer, in ResPost) {
 	{
 		const prefix string = ",\"created\":"
 		out.RawString(prefix)
-		out.String(string(in.Created))
+		out.Raw((in.Created).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"forum\":"
