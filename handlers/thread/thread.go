@@ -7,7 +7,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -96,12 +95,13 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		}
 
 		usersQuery += " ON CONFLICT DO NOTHING"
-		userRows, err := thread.DB.Query(usersQuery, forumUsers...)
+		tx, err := thread.DB.Begin()
+		userRows, err := tx.Query(usersQuery, forumUsers...)
 		if userRows != nil {
 			defer userRows.Close()
 		}
+		tx.Commit()
 		if err != nil {
-			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
