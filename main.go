@@ -12,10 +12,15 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/valyala/fasthttp"
 	"log"
+	"os"
 )
 
 func main() {
-	connStr := fmt.Sprintf("dbname=pq sslmode=disable pool_max_conns=30")
+	connStr := fmt.Sprintf("host=/var/run/postgresql dbname=%s user=%s password=%s sslmode=disable pool_max_conns=30",
+		os.Getenv("DBNAME"),
+		os.Getenv("DBUSER"),
+		os.Getenv("DBPASS"),
+	)
 	config, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		log.Println(err)
