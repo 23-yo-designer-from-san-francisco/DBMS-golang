@@ -3,8 +3,8 @@
 package post
 
 import (
-	sql "database/sql"
 	json "encoding/json"
+	pgxpool "github.com/jackc/pgx/v4/pgxpool"
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
@@ -507,9 +507,9 @@ func easyjson5a72dc82DecodeDBMSHandlersPost3(in *jlexer.Lexer, out *Post) {
 				out.DB = nil
 			} else {
 				if out.DB == nil {
-					out.DB = new(sql.DB)
+					out.DB = new(pgxpool.Pool)
 				}
-				easyjson5a72dc82DecodeDatabaseSql(in, out.DB)
+				easyjson5a72dc82DecodeGithubComJackcPgxV4Pgxpool(in, out.DB)
 			}
 		default:
 			in.SkipRecursive()
@@ -531,7 +531,7 @@ func easyjson5a72dc82EncodeDBMSHandlersPost3(out *jwriter.Writer, in Post) {
 		if in.DB == nil {
 			out.RawString("null")
 		} else {
-			easyjson5a72dc82EncodeDatabaseSql(out, *in.DB)
+			easyjson5a72dc82EncodeGithubComJackcPgxV4Pgxpool(out, *in.DB)
 		}
 	}
 	out.RawByte('}')
@@ -560,7 +560,7 @@ func (v *Post) UnmarshalJSON(data []byte) error {
 func (v *Post) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson5a72dc82DecodeDBMSHandlersPost3(l, v)
 }
-func easyjson5a72dc82DecodeDatabaseSql(in *jlexer.Lexer, out *sql.DB) {
+func easyjson5a72dc82DecodeGithubComJackcPgxV4Pgxpool(in *jlexer.Lexer, out *pgxpool.Pool) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -589,7 +589,7 @@ func easyjson5a72dc82DecodeDatabaseSql(in *jlexer.Lexer, out *sql.DB) {
 		in.Consumed()
 	}
 }
-func easyjson5a72dc82EncodeDatabaseSql(out *jwriter.Writer, in sql.DB) {
+func easyjson5a72dc82EncodeGithubComJackcPgxV4Pgxpool(out *jwriter.Writer, in pgxpool.Pool) {
 	out.RawByte('{')
 	first := true
 	_ = first

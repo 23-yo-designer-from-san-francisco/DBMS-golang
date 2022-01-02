@@ -2,7 +2,9 @@ package post
 
 import (
 	"DBMS/handlers/user"
+	"context"
 	"database/sql"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"strings"
@@ -10,7 +12,7 @@ import (
 )
 
 type Post struct {
-	DB *sql.DB
+	DB *pgxpool.Pool
 }
 
 //easyjson:json
@@ -75,7 +77,7 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 	related := string(ctx.QueryArgs().Peek("related"))
 	var resultPost Res
 
-	row := post.DB.QueryRow(`SELECT author, created, forum, id, message, thread, isedited, parent FROM posts WHERE id=$1`, ID)
+	row := post.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, thread, isedited, parent FROM posts WHERE id=$1`, ID)
 	par := sql.NullInt64{}
 	err := row.Scan(&resultPost.Post.Author, &resultPost.Post.Created, &resultPost.Post.Forum,
 		&resultPost.Post.ID, &resultPost.Post.Message, &resultPost.Post.Thread, &resultPost.Post.IsEdited, &par)
@@ -93,14 +95,14 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 
 	if strings.Contains(related, "user") {
 		resultPost.Author = &Author{}
-		usr := post.DB.QueryRow(`SELECT about, email, fullname, nickname FROM users WHERE nickname=$1`, resultPost.Post.Author)
+		usr := post.DB.QueryRow(context.Background(), `SELECT about, email, fullname, nickname FROM users WHERE nickname=$1`, resultPost.Post.Author)
 		usr.Scan(&resultPost.Author.About, &resultPost.Author.Email, &resultPost.Author.Fullname, &resultPost.Author.Nickname)
 	}
 
 	if strings.Contains(related, "thread") {
 		resultPost.Thread = &Thread{}
 		swag := sql.NullString{}
-		thread := post.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes FROM threads WHERE id=$1`, resultPost.Post.Thread)
+		thread := post.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title, votes FROM threads WHERE id=$1`, resultPost.Post.Thread)
 		thread.Scan(&resultPost.Thread.Author, &resultPost.Thread.Created, &resultPost.Thread.Forum, &resultPost.Thread.ID, &resultPost.Thread.Message,
 			&swag, &resultPost.Thread.Title, &resultPost.Thread.Votes)
 		if swag.Valid {
@@ -111,7 +113,7 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 	if strings.Contains(related, "forum") {
 		resultPost.Forum = &Forum{}
 		swag := sql.NullString{}
-		forum := post.DB.QueryRow(`SELECT posts, slug, threads, title, "user" FROM forums WHERE slug=$1`, resultPost.Post.Forum)
+		forum := post.DB.QueryRow(context.Background(), `SELECT posts, slug, threads, title, "user" FROM forums WHERE slug=$1`, resultPost.Post.Forum)
 		forum.Scan(&resultPost.Forum.Posts, &swag, &resultPost.Forum.Threads, &resultPost.Forum.Title, &resultPost.Forum.User)
 		if swag.Valid {
 			resultPost.Forum.Slug = swag.String
@@ -129,7 +131,7 @@ func (post *Post) UpdateMessage(ctx *fasthttp.RequestCtx) {
 	easyjson.Unmarshal(ctx.PostBody(), &resultPost)
 	newMessage := resultPost.Message
 	if len(resultPost.Message) == 0 {
-		row := post.DB.QueryRow(`SELECT author, created, forum, id, isedited, message, thread from posts WHERE id=$1`, ID)
+		row := post.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, isedited, message, thread from posts WHERE id=$1`, ID)
 		row.Scan(&resultPost.Author, &resultPost.Created, &resultPost.Forum, &resultPost.ID, &resultPost.IsEdited, &resultPost.Message, &resultPost.Thread)
 		res, _ := easyjson.Marshal(resultPost)
 		ctx.SetBody(res)
@@ -137,7 +139,7 @@ func (post *Post) UpdateMessage(ctx *fasthttp.RequestCtx) {
 		ctx.SetContentType("application/json")
 		return
 	}
-	oldPost := post.DB.QueryRow(`SELECT author, created, forum, id, isedited, message, thread FROM posts WHERE id=$1`, ID)
+	oldPost := post.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, isedited, message, thread FROM posts WHERE id=$1`, ID)
 	oldPost.Scan(&resultPost.Author, &resultPost.Created, &resultPost.Forum, &resultPost.ID,
 		&resultPost.IsEdited, &resultPost.Message, &resultPost.Thread)
 
@@ -157,7 +159,7 @@ func (post *Post) UpdateMessage(ctx *fasthttp.RequestCtx) {
 		ctx.SetContentType("application/json")
 		return
 	}
-	row := post.DB.QueryRow(`
+	row := post.DB.QueryRow(context.Background(), `
 		UPDATE
 		posts
 		SET

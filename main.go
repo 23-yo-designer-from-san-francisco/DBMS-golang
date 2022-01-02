@@ -6,52 +6,48 @@ import (
 	"DBMS/handlers/service"
 	"DBMS/handlers/thread"
 	"DBMS/handlers/user"
-	"database/sql"
+	"context"
 	"fmt"
 	"github.com/fasthttp/router"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/valyala/fasthttp"
 	"log"
-	"os"
 )
 
 func main() {
-	connStr := fmt.Sprintf("host=/var/run/postgresql dbname=%s user=%s password=%s sslmode=disable",
-		os.Getenv("DBNAME"),
-		os.Getenv("DBUSER"),
-		os.Getenv("DBPASS"),
-	)
-	var err error
-	db, err := sql.Open("postgres", connStr)
+	connStr := fmt.Sprintf("dbname=pq sslmode=disable")
+	dbPool, err := pgxpool.Connect(context.Background(), connStr)
 	if err != nil {
 		log.Fatalln(err)
+		return
 	}
+	defer dbPool.Close()
 
 	r := router.New()
 
-	forum := &forum.Forum{DB: db}
+	forum := &forum.Forum{DB: dbPool}
 	r.POST("/api/forum/create", forum.Create)
 	r.GET("/api/forum/{slug}/details", forum.Details)
 	r.POST("/api/forum/{slug}/create", forum.CreateThread)
 	r.GET("/api/forum/{slug}/users", forum.Users)
 	r.GET("/api/forum/{slug}/threads", forum.GetThreads)
 
-	post := &post.Post{DB: db}
+	post := &post.Post{DB: dbPool}
 	r.GET("/api/post/{id}/details", post.Details)
 	r.POST("/api/post/{id}/details", post.UpdateMessage)
 
-	service := &service.Service{DB: db}
+	service := &service.Service{DB: dbPool}
 	r.POST("/api/service/clear", service.Clear)
 	r.GET("/api/service/status", service.Status)
 
-	thread := &thread.Thread{DB: db}
+	thread := &thread.Thread{DB: dbPool}
 	r.POST("/api/thread/{slug_or_id}/create", thread.Create)
 	r.GET("/api/thread/{slug_or_id}/details", thread.Details)
 	r.POST("/api/thread/{slug_or_id}/details", thread.Update)
 	r.GET("/api/thread/{slug_or_id}/posts", thread.GetPosts)
 	r.POST("/api/thread/{slug_or_id}/vote", thread.Vote)
 
-	user := &user.User{DB: db}
+	user := &user.User{DB: dbPool}
 	r.POST("/api/user/{nickname}/create", user.Create)
 	r.GET("/api/user/{nickname}/profile", user.Profile)
 	r.POST("/api/user/{nickname}/profile", user.Update)

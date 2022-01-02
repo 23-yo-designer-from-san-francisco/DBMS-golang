@@ -2,8 +2,11 @@ package thread
 
 import (
 	"DBMS/handlers/user"
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
@@ -29,7 +32,7 @@ type ResThread struct {
 }
 
 type Thread struct {
-	DB *sql.DB
+	DB *pgxpool.Pool
 }
 
 //easyjson:json
@@ -44,15 +47,15 @@ type ResThreads []ResThread
 func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 	SLUG := ctx.UserValue("slug_or_id").(string)
 	id, err := strconv.Atoi(SLUG)
-	var row *sql.Row
+	var row pgx.Row
 	var forumTitle string
 	var forumSwag string
 	if err == nil {
-		row = thread.DB.QueryRow(`SELECT title, forum from threads where id=$1`, id)
+		row = thread.DB.QueryRow(context.Background(), `SELECT title, forum from threads where id=$1`, id)
 		err = row.Scan(&forumTitle, &forumSwag)
 	} else {
 		id = -1
-		row = thread.DB.QueryRow(`SELECT title, forum, id from threads where slug=$1`, SLUG)
+		row = thread.DB.QueryRow(context.Background(), `SELECT title, forum, id from threads where slug=$1`, SLUG)
 		err = row.Scan(&forumTitle, &forumSwag, &id)
 	}
 
@@ -82,15 +85,15 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		query = strings.TrimSuffix(query, ",")
 		usersQuery = strings.TrimSuffix(usersQuery, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
-		tx, err := thread.DB.Begin()
+		tx, err := thread.DB.Begin(context.Background())
 		if err != nil {
 			log.Println(err)
 		}
-		rows, err := thread.DB.Query(query, values...)
+		rows, err := thread.DB.Query(context.Background(), query, values...)
 		if rows != nil {
 			defer rows.Close()
 		}
-		txErr := tx.Commit()
+		txErr := tx.Commit(context.Background())
 		if txErr != nil {
 			log.Println(txErr)
 		}
@@ -105,12 +108,12 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		}
 
 		usersQuery += " ON CONFLICT DO NOTHING"
-		tx, err = thread.DB.Begin()
-		userRows, err := tx.Query(usersQuery, forumUsers...)
+		tx, err = thread.DB.Begin(context.Background())
+		userRows, err := tx.Query(context.Background(), usersQuery, forumUsers...)
 		if userRows != nil {
 			defer userRows.Close()
 		}
-		txErr = tx.Commit()
+		txErr = tx.Commit(context.Background())
 		if txErr != nil {
 			log.Println(txErr)
 		}
@@ -162,11 +165,11 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 	SLUG := ctx.UserValue("slug_or_id").(string)
 	id, err := strconv.Atoi(SLUG)
-	var row *sql.Row
+	var row pgx.Row
 	thr := &ResThread{}
 	if err == nil {
 		swag := sql.NullString{}
-		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes
+		row = thread.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title, votes
 										from threads where id=$1`,
 			id)
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title, &thr.Votes)
@@ -184,7 +187,7 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 	} else {
 		id = -1
 		swag := sql.NullString{}
-		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title, votes
+		row = thread.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title, votes
 										from threads where slug=$1`,
 			SLUG)
 		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title, &thr.Votes)
@@ -227,7 +230,7 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 	}
 	query += " RETURNING id, title, author, forum, message, votes, slug, created;"
 
-	row := thread.DB.QueryRow(query, args...)
+	row := thread.DB.QueryRow(context.Background(), query, args...)
 	swag := sql.NullString{}
 	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swag, &thr.Created)
 	if swag.Valid {
@@ -261,11 +264,11 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 	var query string
 	var args []interface{}
 	ID, err := strconv.Atoi(slugOrID)
-	var thr *sql.Row
+	var thr pgx.Row
 	if err == nil {
-		thr = thread.DB.QueryRow(`SELECT COUNT(1) FROM threads WHERE id=$1`, ID)
+		thr = thread.DB.QueryRow(context.Background(), `SELECT COUNT(1) FROM threads WHERE id=$1`, ID)
 	} else {
-		thr = thread.DB.QueryRow(`SELECT COUNT(1) FROM threads WHERE slug=$1`, slugOrID)
+		thr = thread.DB.QueryRow(context.Background(), `SELECT COUNT(1) FROM threads WHERE slug=$1`, slugOrID)
 	}
 	var threadFound int
 	thr.Scan(&threadFound)
@@ -420,7 +423,7 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
     `
 
 	}
-	rows, _ := thread.DB.Query(query, args...)
+	rows, _ := thread.DB.Query(context.Background(), query, args...)
 	defer rows.Close()
 	result := make(ResThreads, 0)
 	for rows.Next() {
@@ -436,25 +439,25 @@ func (thread *Thread) GetPosts(ctx *fasthttp.RequestCtx) {
 
 func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 	threadSlug := ctx.UserValue("slug_or_id").(string)
-	var row *sql.Row
+	var row pgx.Row
 	id, err := strconv.Atoi(threadSlug)
 	thr := &ResThread{}
 	if err == nil {
 		swag := sql.NullString{}
-		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title from threads where id=$1`, id)
+		row = thread.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title from threads where id=$1`, id)
 		row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title)
 		if swag.Valid {
 			thr.Slug = swag.String
 		}
 	} else {
 		id = -1
-		row = thread.DB.QueryRow(`SELECT author, created, forum, id, message, slug, title from threads where slug=$1`, threadSlug)
+		row = thread.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title from threads where slug=$1`, threadSlug)
 		row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &thr.Slug, &thr.Title)
 	}
 	if len(threadSlug) != 0 {
 		vote := &Vote{}
 		easyjson.Unmarshal(ctx.PostBody(), vote)
-		row := thread.DB.QueryRow(`INSERT INTO votes as vote 
+		row := thread.DB.QueryRow(context.Background(), `INSERT INTO votes as vote 
                 (nickname, thread, voice)
                 VALUES ($1, $2, $3) 
                 ON CONFLICT ON CONSTRAINT votes_user_thread_unique DO
@@ -471,7 +474,7 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 				return
 			}
 		}
-		row = thread.DB.QueryRow(`SELECT votes FROM threads WHERE id=$1`, thr.ID)
+		row = thread.DB.QueryRow(context.Background(), `SELECT votes FROM threads WHERE id=$1`, thr.ID)
 		err = row.Scan(&thr.Votes)
 		if err != nil {
 			result := user.ErrMsg{Message: "Can't find thread by slug: " + threadSlug}

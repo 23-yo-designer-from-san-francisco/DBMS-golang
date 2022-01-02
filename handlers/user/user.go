@@ -1,9 +1,12 @@
 package user
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
@@ -21,7 +24,7 @@ type Req struct {
 type Reqs []Req
 
 type User struct {
-	DB *sql.DB
+	DB *pgxpool.Pool
 }
 
 //easyjson:json
@@ -33,7 +36,7 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	request.Nickname = ctx.UserValue("nickname").(string)
 	easyjson.Unmarshal(ctx.PostBody(), request)
-	_, err := user.DB.Exec("INSERT INTO users (nickname, fullname, about, email) "+
+	_, err := user.DB.Exec(context.Background(), "INSERT INTO users (nickname, fullname, about, email) "+
 		"VALUES ($1, $2, $3, $4)",
 		request.Nickname,
 		request.Fullname,
@@ -41,14 +44,12 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 		request.Email,
 	)
 	if err != nil {
-		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
+		rows, _ := user.DB.Query(context.Background(), "SELECT nickname, fullname, about, email "+
 			"FROM users "+
 			"WHERE nickname=$1 or email=$2",
 			request.Nickname,
 			request.Email)
-		defer func(rows *sql.Rows) {
-			rows.Close()
-		}(rows)
+		defer rows.Close()
 		results := make(Reqs, 0)
 		for rows.Next() {
 			user := &Req{}
@@ -76,7 +77,7 @@ func (user *User) Create(ctx *fasthttp.RequestCtx) {
 func (user *User) Profile(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	nickname := ctx.UserValue("nickname")
-	rows, _ := user.DB.Query("SELECT nickname, fullname, about, email "+
+	rows, _ := user.DB.Query(context.Background(), "SELECT nickname, fullname, about, email "+
 		"FROM users "+
 		"WHERE nickname=$1",
 		nickname)
@@ -105,7 +106,7 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 	nickname := ctx.UserValue("nickname").(string)
 	easyjson.Unmarshal(ctx.PostBody(), request)
 	if len(request.About) == 0 && len(request.Email) == 0 && len(request.Nickname) == 0 && len(request.Fullname) == 0 {
-		rows, _ := user.DB.Query("SELECT nickname, fullname, about, email FROM users WHERE nickname=$1", nickname)
+		rows, _ := user.DB.Query(context.Background(), "SELECT nickname, fullname, about, email FROM users WHERE nickname=$1", nickname)
 		defer rows.Close()
 		rows.Next()
 		rows.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
@@ -116,10 +117,10 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 		return
 	}
 	request.Nickname = nickname
-	var row *sql.Row
+	var row pgx.Row
 	var err error
 	if len(request.Email) != 0 {
-		row = user.DB.QueryRow("UPDATE users "+
+		row = user.DB.QueryRow(context.Background(), "UPDATE users "+
 			"SET fullname=CASE WHEN $1 <> '' THEN $1 ELSE fullname END,"+
 			"about=CASE WHEN $2 <> '' THEN $2 ELSE about END,"+
 			"email = $3"+
@@ -131,7 +132,7 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 		)
 		err = row.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
 	} else {
-		row = user.DB.QueryRow("UPDATE users "+
+		row = user.DB.QueryRow(context.Background(), "UPDATE users "+
 			"SET fullname=CASE WHEN $1 <> '' THEN $1 ELSE fullname END,"+
 			"about=CASE WHEN $2 <> '' THEN $2 ELSE about END "+
 			"WHERE nickname=$3 RETURNING nickname, fullname, about, email",

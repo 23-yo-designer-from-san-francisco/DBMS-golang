@@ -2,8 +2,11 @@ package forum
 
 import (
 	"DBMS/handlers/user"
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
@@ -11,7 +14,7 @@ import (
 )
 
 type Forum struct {
-	DB *sql.DB
+	DB *pgxpool.Pool
 }
 
 //easyjson:json
@@ -44,12 +47,12 @@ type ThreadsReq []ThreadReq
 func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	easyjson.Unmarshal(ctx.PostBody(), request)
-	usr, err := forum.DB.Query(`SELECT nickname FROM users WHERE nickname=$1`, request.User)
+	usr, err := forum.DB.Query(context.Background(), `SELECT nickname FROM users WHERE nickname=$1`, request.User)
 	defer usr.Close()
 	if usr.Next() {
 		usr.Scan(&request.User)
 	}
-	_, err = forum.DB.Exec(`INSERT INTO forums (title, "user", slug) VALUES($1, $2, $3)`,
+	_, err = forum.DB.Exec(context.Background(), `INSERT INTO forums (title, "user", slug) VALUES($1, $2, $3)`,
 		request.Title,
 		request.User,
 		request.Slug,
@@ -58,7 +61,7 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 	if err, ok := err.(*pq.Error); ok {
 		switch err.Code {
 		case "23505":
-			rows, _ := forum.DB.Query(`SELECT slug, title, "user"`+
+			rows, _ := forum.DB.Query(context.Background(), `SELECT slug, title, "user"`+
 				"FROM forums "+
 				"WHERE slug=$1",
 				request.Slug)
@@ -89,7 +92,7 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
 	request := &Req{}
 	request.Slug = ctx.UserValue("slug").(string)
-	rows, _ := forum.DB.Query(`SELECT slug, title, "user", posts, threads `+
+	rows, _ := forum.DB.Query(context.Background(), `SELECT slug, title, "user", posts, threads `+
 		"FROM forums "+
 		"WHERE slug=$1",
 		request.Slug)
@@ -117,7 +120,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 	easyjson.Unmarshal(ctx.PostBody(), thr)
 
 	var SWAG string
-	err := forum.DB.QueryRow(`SELECT slug FROM forums WHERE slug=$1`, SLUG).Scan(&SWAG)
+	err := forum.DB.QueryRow(context.Background(), `SELECT slug FROM forums WHERE slug=$1`, SLUG).Scan(&SWAG)
 	if err == sql.ErrNoRows {
 		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find thread forum by slug: %s", SWAG)}
 		response, _ := easyjson.Marshal(errMsg)
@@ -127,7 +130,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	row := forum.DB.QueryRow(`INSERT INTO threads (title,author, forum, message, created, slug) 
+	row := forum.DB.QueryRow(context.Background(), `INSERT INTO threads (title,author, forum, message, created, slug) 
 		VALUES($1, $2, $3, $4, $5, CASE WHEN $6 <> '' THEN $6 END) RETURNING id`,
 		thr.Title,
 		thr.Author,
@@ -142,7 +145,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		case "23505":
 			thread := &ThreadReq{}
 			swag := sql.NullString{}
-			forum.DB.QueryRow("SELECT author, created, forum, id, message, slug, title "+
+			forum.DB.QueryRow(context.Background(), "SELECT author, created, forum, id, message, slug, title "+
 				"FROM threads "+
 				"WHERE slug=$1", thr.Slug).Scan(&thread.Author,
 				&thread.Created, &thread.Forum, &thread.ID, &thread.Message, &swag, &thread.Title)
@@ -164,7 +167,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		}
 	}
 	thr.Forum = SWAG
-	userQuery := forum.DB.QueryRow(`INSERT INTO forum_users (user_nickname, forum_swag) VALUES ($1, $2)`, thr.Author, thr.Forum)
+	userQuery := forum.DB.QueryRow(context.Background(), `INSERT INTO forum_users (user_nickname, forum_swag) VALUES ($1, $2)`, thr.Author, thr.Forum)
 	userQuery.Scan()
 	res, _ := easyjson.Marshal(thr)
 	ctx.SetBody(res)
@@ -179,7 +182,7 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 	since := string(ctx.QueryArgs().Peek("since"))
 	users := make(user.Reqs, 0)
 
-	query := forum.DB.QueryRow(`SELECT id from forums WHERE slug=$1`, SLUG)
+	query := forum.DB.QueryRow(context.Background(), `SELECT id from forums WHERE slug=$1`, SLUG)
 	var forumID int
 	query.Scan(&forumID)
 	var queryOpts string
@@ -200,7 +203,7 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 		queryOpts += " LIMIT " + limit //TODO=Сделать через $
 	}
 
-	rows, _ := forum.DB.Query(`SELECT about, email, fullname, nickname FROM users u
+	rows, _ := forum.DB.Query(context.Background(), `SELECT about, email, fullname, nickname FROM users u
 										JOIN forum_users fu ON fu.user_nickname = u.nickname WHERE forum_swag = $1`+queryOpts, SLUG)
 	defer rows.Close()
 	found := false
@@ -212,7 +215,7 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 	}
 
 	if !found {
-		forum := forum.DB.QueryRow(`SELECT id FROM forums where slug=$1`, SLUG)
+		forum := forum.DB.QueryRow(context.Background(), `SELECT id FROM forums where slug=$1`, SLUG)
 		var forumID int
 		forum.Scan(&forumID)
 		if forumID == 0 {
@@ -243,23 +246,23 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	} else {
 		limitQueryArg = ""
 	}
-	var rows *sql.Rows
+	var rows pgx.Rows
 
 	if len(limit) != 0 {
 		if len(since) == 0 {
 			if desc == "true" {
-				rows, _ = forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+				rows, _ = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 					"FROM threads WHERE forum=$1 ORDER BY created DESC "+limitQueryArg, SLUG)
 			} else {
-				rows, _ = forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+				rows, _ = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 					"FROM threads WHERE forum=$1 ORDER BY created ASC "+limitQueryArg, SLUG)
 			}
 		} else {
 			if desc == "true" {
-				rows, _ = forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+				rows, _ = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 					"FROM threads WHERE forum=$1 AND created <= $2 ORDER BY created DESC "+limitQueryArg, SLUG, since)
 			} else {
-				rows, _ = forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+				rows, _ = forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 					"FROM threads WHERE forum=$1 AND created >= $2 ORDER BY created ASC "+limitQueryArg, SLUG, since)
 			}
 		}
@@ -276,7 +279,7 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 			threads = append(threads, *thr)
 		}
 		if thr.ID == 0 {
-			forum, _ := forum.DB.Query("SELECT id FROM forums WHERE slug=$1", SLUG)
+			forum, _ := forum.DB.Query(context.Background(), "SELECT id FROM forums WHERE slug=$1", SLUG)
 			defer forum.Close()
 			if !forum.Next() {
 				errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find forum by slug: %s", SLUG)}
@@ -299,7 +302,7 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 
 	thr := &ThreadReq{}
 	swag := sql.NullString{}
-	usr, _ := forum.DB.Query("SELECT id, title, author, forum, message, votes, slug, created "+
+	usr, _ := forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 		"FROM threads WHERE forum=$1", SLUG)
 	defer usr.Close()
 	usr.Next()
