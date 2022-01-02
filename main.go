@@ -15,8 +15,12 @@ import (
 )
 
 func main() {
-	connStr := fmt.Sprintf("dbname=pq sslmode=disable")
-	dbPool, err := pgxpool.Connect(context.Background(), connStr)
+	connStr := fmt.Sprintf("dbname=pq sslmode=disable pool_max_conns=30")
+	config, err := pgxpool.ParseConfig(connStr)
+	if err != nil {
+		log.Println(err)
+	}
+	dbPool, err := pgxpool.ConnectConfig(context.Background(), config)
 	if err != nil {
 		log.Fatalln(err)
 		return

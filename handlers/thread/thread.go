@@ -85,19 +85,34 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		query = strings.TrimSuffix(query, ",")
 		usersQuery = strings.TrimSuffix(usersQuery, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
+		tx, err := thread.DB.Begin(context.TODO())
 		rows, err := thread.DB.Query(context.Background(), query, values...)
+		defer func(tx pgx.Tx, ctx context.Context) {
+			err := tx.Commit(ctx)
+			if err != nil {
+				log.Println("Commit posts query failure")
+				log.Println(err)
+			}
+		}(tx, context.TODO())
 		if rows != nil {
 			defer rows.Close()
 		}
-
+		if err != nil {
+			log.Println(err)
+		}
 		usersQuery += " ON CONFLICT DO NOTHING"
-		//tx, err = thread.DB.Begin(context.Background())
+		tx, err = thread.DB.Begin(context.TODO())
 		userRows, err := thread.DB.Query(context.Background(), usersQuery, forumUsers...)
 		if userRows != nil {
 			defer userRows.Close()
 		}
-		log.Println(userRows.Next())
-		//defer tx.Commit(context.Background())
+		defer func(tx pgx.Tx, ctx context.Context) {
+			err := tx.Commit(ctx)
+			if err != nil {
+				log.Println("Commit forum_users query failure")
+				log.Println(err)
+			}
+		}(tx, context.TODO())
 		if err != nil {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
