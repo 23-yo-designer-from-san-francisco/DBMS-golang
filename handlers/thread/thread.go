@@ -113,10 +113,7 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		if userRows != nil {
 			defer userRows.Close()
 		}
-		txErr = tx.Commit(context.Background())
-		if txErr != nil {
-			log.Println(txErr)
-		}
+		defer tx.Commit(context.Background())
 		if err != nil {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}

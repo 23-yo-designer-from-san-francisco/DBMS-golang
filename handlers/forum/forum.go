@@ -5,9 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 	"time"
@@ -58,7 +58,7 @@ func (forum *Forum) Create(ctx *fasthttp.RequestCtx) {
 		request.Slug,
 	)
 
-	if err, ok := err.(*pq.Error); ok {
+	if err, ok := err.(*pgconn.PgError); ok {
 		switch err.Code {
 		case "23505":
 			rows, _ := forum.DB.Query(context.Background(), `SELECT slug, title, "user"`+
@@ -121,7 +121,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 
 	var SWAG string
 	err := forum.DB.QueryRow(context.Background(), `SELECT slug FROM forums WHERE slug=$1`, SLUG).Scan(&SWAG)
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find thread forum by slug: %s", SWAG)}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
@@ -140,7 +140,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		thr.Slug,
 	)
 	err = row.Scan(&thr.ID)
-	if err, ok := err.(*pq.Error); ok {
+	if err, ok := err.(*pgconn.PgError); ok {
 		switch err.Code {
 		case "23505":
 			thread := &ThreadReq{}

@@ -2,12 +2,10 @@ package user
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
 )
@@ -142,18 +140,7 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 		)
 		err = row.Scan(&request.Nickname, &request.Fullname, &request.About, &request.Email)
 	}
-	if err, ok := err.(*pq.Error); ok {
-		switch err.Code {
-		case "23505":
-			errMsg := &ErrMsg{Message: fmt.Sprintf("This email is already registered by user: %s", nickname)}
-			response, _ := easyjson.Marshal(errMsg)
-			ctx.SetBody(response)
-			ctx.SetStatusCode(409)
-			ctx.SetContentType("application/json")
-			return
-		}
-	}
-	if err == sql.ErrNoRows { // No such user
+	if err == pgx.ErrNoRows { // No such user
 		errMsg := &ErrMsg{Message: fmt.Sprintf("Can't find user with nickname %s", nickname)}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
@@ -161,6 +148,15 @@ func (user *User) Update(ctx *fasthttp.RequestCtx) {
 		ctx.SetContentType("application/json")
 		return
 	}
+	if err != nil {
+		errMsg := &ErrMsg{Message: fmt.Sprintf("This email is already registered by user: %s", nickname)}
+		response, _ := easyjson.Marshal(errMsg)
+		ctx.SetBody(response)
+		ctx.SetStatusCode(409)
+		ctx.SetContentType("application/json")
+		return
+	}
+
 	ctx.Response.SetStatusCode(200)
 	resp, _ := easyjson.Marshal(request)
 	ctx.Response.SetBody(resp)
