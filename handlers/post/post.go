@@ -46,14 +46,14 @@ type Forum struct {
 //easyjson:json
 type Res struct {
 	Post struct {
-		Author   string `json:"author"`
-		Created  string `json:"created"`
-		Forum    string `json:"forum"`
-		ID       int    `json:"id"`
-		Message  string `json:"message"`
-		Thread   int    `json:"thread"`
-		IsEdited bool   `json:"isEdited"`
-		Parent   int64  `json:"parent"`
+		Author   string    `json:"author"`
+		Created  time.Time `json:"created"`
+		Forum    string    `json:"forum"`
+		ID       int       `json:"id"`
+		Message  string    `json:"message"`
+		Thread   int       `json:"thread"`
+		IsEdited bool      `json:"isEdited"`
+		Parent   int64     `json:"parent"`
 	} `json:"post"`
 	Author *Author `json:"author"`
 	Thread *Thread `json:"thread"`

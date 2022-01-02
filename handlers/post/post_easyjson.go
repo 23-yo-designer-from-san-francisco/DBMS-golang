@@ -8,6 +8,7 @@ import (
 	easyjson "github.com/mailru/easyjson"
 	jlexer "github.com/mailru/easyjson/jlexer"
 	jwriter "github.com/mailru/easyjson/jwriter"
+	time "time"
 )
 
 // suppress unused package warning
@@ -374,14 +375,14 @@ func (v *Res) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson5a72dc82DecodeDBMSHandlersPost2(l, v)
 }
 func easyjson5a72dc82Decode(in *jlexer.Lexer, out *struct {
-	Author   string `json:"author"`
-	Created  string `json:"created"`
-	Forum    string `json:"forum"`
-	ID       int    `json:"id"`
-	Message  string `json:"message"`
-	Thread   int    `json:"thread"`
-	IsEdited bool   `json:"isEdited"`
-	Parent   int64  `json:"parent"`
+	Author   string    `json:"author"`
+	Created  time.Time `json:"created"`
+	Forum    string    `json:"forum"`
+	ID       int       `json:"id"`
+	Message  string    `json:"message"`
+	Thread   int       `json:"thread"`
+	IsEdited bool      `json:"isEdited"`
+	Parent   int64     `json:"parent"`
 }) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
@@ -404,7 +405,9 @@ func easyjson5a72dc82Decode(in *jlexer.Lexer, out *struct {
 		case "author":
 			out.Author = string(in.String())
 		case "created":
-			out.Created = string(in.String())
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Created).UnmarshalJSON(data))
+			}
 		case "forum":
 			out.Forum = string(in.String())
 		case "id":
@@ -428,14 +431,14 @@ func easyjson5a72dc82Decode(in *jlexer.Lexer, out *struct {
 	}
 }
 func easyjson5a72dc82Encode(out *jwriter.Writer, in struct {
-	Author   string `json:"author"`
-	Created  string `json:"created"`
-	Forum    string `json:"forum"`
-	ID       int    `json:"id"`
-	Message  string `json:"message"`
-	Thread   int    `json:"thread"`
-	IsEdited bool   `json:"isEdited"`
-	Parent   int64  `json:"parent"`
+	Author   string    `json:"author"`
+	Created  time.Time `json:"created"`
+	Forum    string    `json:"forum"`
+	ID       int       `json:"id"`
+	Message  string    `json:"message"`
+	Thread   int       `json:"thread"`
+	IsEdited bool      `json:"isEdited"`
+	Parent   int64     `json:"parent"`
 }) {
 	out.RawByte('{')
 	first := true
@@ -448,7 +451,7 @@ func easyjson5a72dc82Encode(out *jwriter.Writer, in struct {
 	{
 		const prefix string = ",\"created\":"
 		out.RawString(prefix)
-		out.String(string(in.Created))
+		out.Raw((in.Created).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"forum\":"
