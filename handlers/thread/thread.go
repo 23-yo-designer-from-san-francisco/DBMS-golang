@@ -85,25 +85,9 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		query = strings.TrimSuffix(query, ",")
 		usersQuery = strings.TrimSuffix(usersQuery, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
-		//tx, err := thread.DB.Begin(context.Background())
-		//if err != nil {
-		//	log.Println(err)
-		//}
 		rows, err := thread.DB.Query(context.Background(), query, values...)
 		if rows != nil {
 			defer rows.Close()
-		}
-		//txErr := tx.Commit(context.Background())
-		//if txErr != nil {
-		//	log.Println(txErr)
-		//}
-		if err != nil {
-			result := user.ErrMsg{Message: "Parent post was created in another thread"}
-			res, _ := easyjson.Marshal(result)
-			ctx.SetBody(res)
-			ctx.SetStatusCode(409)
-			ctx.SetContentType("application/json")
-			return
 		}
 
 		usersQuery += " ON CONFLICT DO NOTHING"
@@ -112,6 +96,7 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		if userRows != nil {
 			defer userRows.Close()
 		}
+		log.Println(userRows.Next())
 		//defer tx.Commit(context.Background())
 		if err != nil {
 			log.Println(err)
@@ -144,6 +129,14 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 				post.Parent = 0
 			}
 			resPosts = append(resPosts, *post)
+		}
+		if len(resPosts) == 0 {
+			result := user.ErrMsg{Message: "Parent post was created in another thread"}
+			res, _ := easyjson.Marshal(result)
+			ctx.SetBody(res)
+			ctx.SetStatusCode(409)
+			ctx.SetContentType("application/json")
+			return
 		}
 		res, _ := easyjson.Marshal(resPosts)
 		ctx.SetBody(res)
