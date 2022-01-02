@@ -98,7 +98,6 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		//	log.Println(txErr)
 		//}
 		if err != nil {
-			log.Println(err)
 			result := user.ErrMsg{Message: "Parent post was created in another thread"}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
