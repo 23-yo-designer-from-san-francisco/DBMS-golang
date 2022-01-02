@@ -90,15 +90,11 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		defer func(tx pgx.Tx, ctx context.Context) {
 			err := tx.Commit(ctx)
 			if err != nil {
-				log.Println("Commit posts query failure")
 				log.Println(err)
 			}
 		}(tx, context.TODO())
 		if rows != nil {
 			defer rows.Close()
-		}
-		if err != nil {
-			log.Println(err)
 		}
 		usersQuery += " ON CONFLICT DO NOTHING"
 		tx, err = thread.DB.Begin(context.TODO())
@@ -109,12 +105,10 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		defer func(tx pgx.Tx, ctx context.Context) {
 			err := tx.Commit(ctx)
 			if err != nil {
-				log.Println("Commit forum_users query failure")
-				log.Println(err)
+				log.Println()
 			}
 		}(tx, context.TODO())
 		if err != nil {
-			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
