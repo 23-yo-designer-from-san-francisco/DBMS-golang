@@ -85,18 +85,18 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		query = strings.TrimSuffix(query, ",")
 		usersQuery = strings.TrimSuffix(usersQuery, ",")
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
-		tx, err := thread.DB.Begin(context.Background())
-		if err != nil {
-			log.Println(err)
-		}
+		//tx, err := thread.DB.Begin(context.Background())
+		//if err != nil {
+		//	log.Println(err)
+		//}
 		rows, err := thread.DB.Query(context.Background(), query, values...)
 		if rows != nil {
 			defer rows.Close()
 		}
-		txErr := tx.Commit(context.Background())
-		if txErr != nil {
-			log.Println(txErr)
-		}
+		//txErr := tx.Commit(context.Background())
+		//if txErr != nil {
+		//	log.Println(txErr)
+		//}
 		if err != nil {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Parent post was created in another thread"}
@@ -108,12 +108,12 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		}
 
 		usersQuery += " ON CONFLICT DO NOTHING"
-		tx, err = thread.DB.Begin(context.Background())
-		userRows, err := tx.Query(context.Background(), usersQuery, forumUsers...)
+		//tx, err = thread.DB.Begin(context.Background())
+		userRows, err := thread.DB.Query(context.Background(), usersQuery, forumUsers...)
 		if userRows != nil {
 			defer userRows.Close()
 		}
-		defer tx.Commit(context.Background())
+		//defer tx.Commit(context.Background())
 		if err != nil {
 			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}

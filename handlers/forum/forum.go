@@ -207,8 +207,13 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 		queryOpts += " LIMIT " + limit //TODO=Сделать через $
 	}
 
-	rows, _ := forum.DB.Query(context.Background(), `SELECT about, email, fullname, nickname FROM users u
+	rows, err := forum.DB.Query(context.Background(), `SELECT about, email, fullname, nickname FROM users u
 										JOIN forum_users fu ON fu.user_nickname = u.nickname WHERE forum_swag = $1`+queryOpts, SLUG)
+	if err != nil {
+		log.Println("err here1")
+		log.Println(err)
+		log.Println("err here2")
+	}
 	defer rows.Close()
 	found := false
 	for rows.Next() {
@@ -216,7 +221,9 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 		var usr user.Req
 		err := rows.Scan(&usr.About, &usr.Email, &usr.Fullname, &usr.Nickname)
 		if err != nil {
+			log.Println("err here1")
 			log.Println(err)
+			log.Println("err here2")
 		}
 		users = append(users, usr)
 	}
@@ -248,11 +255,11 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	SLUG := ctx.UserValue("slug").(string)
 	desc := string(ctx.QueryArgs().Peek("desc"))
-	limit := ctx.QueryArgs().Peek("limit")
+	limit := string(ctx.QueryArgs().Peek("limit"))
 	since := string(ctx.QueryArgs().Peek("since"))
 	var limitQueryArg string
 	if len(limit) != 0 {
-		limitQueryArg = " LIMIT " + string(limit)
+		limitQueryArg = " LIMIT " + limit
 	} else {
 		limitQueryArg = ""
 	}
