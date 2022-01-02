@@ -7,6 +7,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -100,6 +101,7 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 			defer userRows.Close()
 		}
 		if err != nil {
+			log.Println(err)
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
 			res, _ := easyjson.Marshal(result)
 			ctx.SetBody(res)
