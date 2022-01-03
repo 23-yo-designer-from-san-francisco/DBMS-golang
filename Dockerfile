@@ -39,7 +39,6 @@ EXPOSE 5000
 ENV DBPORT 5432
 ENV DBNAME docker
 ENV DBUSER docker
-ENV DBPASS docker
 ENV PGPASSWORD docker
 
 CMD service postgresql start && psql -h localhost -d docker -U docker -p 5432 -a -q -f ./db/init.sql && /usr/local/go/bin/go build main.go && ./main

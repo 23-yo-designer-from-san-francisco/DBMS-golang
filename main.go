@@ -19,7 +19,7 @@ func main() {
 	connStr := fmt.Sprintf("host=/var/run/postgresql dbname=%s user=%s password=%s sslmode=disable pool_max_conns=30",
 		os.Getenv("DBNAME"),
 		os.Getenv("DBUSER"),
-		os.Getenv("DBPASS"),
+		os.Getenv("PGPASSWORD"),
 	)
 	config, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
