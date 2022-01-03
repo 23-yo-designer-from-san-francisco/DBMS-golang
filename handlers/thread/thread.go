@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mailru/easyjson"
 	"github.com/valyala/fasthttp"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -87,12 +86,7 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		query += ` RETURNING id, parent, author, message, isedited, forum, thread, created;`
 		tx, err := thread.DB.Begin(context.TODO())
 		rows, err := thread.DB.Query(context.Background(), query, values...)
-		defer func(tx pgx.Tx, ctx context.Context) {
-			err := tx.Commit(ctx)
-			if err != nil {
-				log.Println(err)
-			}
-		}(tx, context.TODO())
+		tx.Commit(ctx)
 		if rows != nil {
 			defer rows.Close()
 		}
@@ -102,12 +96,8 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		if userRows != nil {
 			defer userRows.Close()
 		}
-		defer func(tx pgx.Tx, ctx context.Context) {
-			err := tx.Commit(ctx)
-			if err != nil {
-				log.Println()
-			}
-		}(tx, context.TODO())
+		tx.Commit(ctx)
+
 		if err != nil {
 			result := user.ErrMsg{Message: "Can't find post author by nickname: "}
 			res, _ := easyjson.Marshal(result)
