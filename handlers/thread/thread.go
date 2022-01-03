@@ -139,13 +139,23 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 			}
 			resPosts = append(resPosts, *post)
 		}
-		if len(resPosts) == 0 {
-			result := user.ErrMsg{Message: "Parent post was created in another thread"}
-			res, _ := easyjson.Marshal(result)
-			ctx.SetBody(res)
-			ctx.SetStatusCode(409)
-			ctx.SetContentType("application/json")
-			return
+		if er, ok := rows.Err().(*pgconn.PgError); ok {
+			switch er.Code {
+			case "23503":
+				result := user.ErrMsg{Message: "Can't find post author by nickname: "}
+				res, _ := easyjson.Marshal(result)
+				ctx.SetBody(res)
+				ctx.SetStatusCode(404)
+				ctx.SetContentType("application/json")
+				return
+			case "42704":
+				result := user.ErrMsg{Message: "Parent post was created in another thread"}
+				res, _ := easyjson.Marshal(result)
+				ctx.SetBody(res)
+				ctx.SetStatusCode(409)
+				ctx.SetContentType("application/json")
+				return
+			}
 		}
 		res, _ := easyjson.Marshal(resPosts)
 		ctx.SetBody(res)
