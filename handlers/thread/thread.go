@@ -48,14 +48,14 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 	id, err := strconv.Atoi(SLUG)
 	var row pgx.Row
 	var forumTitle string
-	var forumSwag string
+	var forumSlug string
 	if err == nil {
 		row = thread.DB.QueryRow(context.Background(), `SELECT title, forum from threads where id=$1`, id)
-		err = row.Scan(&forumTitle, &forumSwag)
+		err = row.Scan(&forumTitle, &forumSlug)
 	} else {
 		id = -1
 		row = thread.DB.QueryRow(context.Background(), `SELECT title, forum, id from threads where slug=$1`, SLUG)
-		err = row.Scan(&forumTitle, &forumSwag, &id)
+		err = row.Scan(&forumTitle, &forumSlug, &id)
 	}
 
 	if len(forumTitle) != 0 {
@@ -69,7 +69,7 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 		}
 		query := `INSERT INTO posts (parent, author, message, thread, forum) VALUES`
 		var values []interface{}
-		usersQuery := `INSERT INTO forum_users (user_nickname, forum_swag) VALUES`
+		usersQuery := `INSERT INTO forum_users (user_nickname, forum_slug) VALUES`
 		var forumUsers []interface{}
 		for i, thr := range *threads {
 			value := fmt.Sprintf(
@@ -77,9 +77,9 @@ func (thread *Thread) Create(ctx *fasthttp.RequestCtx) {
 				i*5+1, i*5+2, i*5+3, i*5+4, i*5+5,
 			)
 			usersQuery += fmt.Sprintf("($%d, $%d),", i*2+1, i*2+2)
-			forumUsers = append(forumUsers, thr.Author, forumSwag)
+			forumUsers = append(forumUsers, thr.Author, forumSlug)
 			query += value
-			values = append(values, thr.Parent, thr.Author, thr.Message, id, forumSwag)
+			values = append(values, thr.Parent, thr.Author, thr.Message, id, forumSlug)
 		}
 		query = strings.TrimSuffix(query, ",")
 		usersQuery = strings.TrimSuffix(usersQuery, ",")
@@ -166,13 +166,13 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 	var row pgx.Row
 	thr := &ResThread{}
 	if err == nil {
-		swag := sql.NullString{}
+		slug := sql.NullString{}
 		row = thread.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title, votes
 										from threads where id=$1`,
 			id)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title, &thr.Votes)
-		if swag.Valid {
-			thr.Slug = swag.String
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &slug, &thr.Title, &thr.Votes)
+		if slug.Valid {
+			thr.Slug = slug.String
 		}
 		if thr.ID == 0 {
 			result := user.ErrMsg{Message: "Can't find thread by ID: "}
@@ -184,13 +184,13 @@ func (thread *Thread) Details(ctx *fasthttp.RequestCtx) {
 		}
 	} else {
 		id = -1
-		swag := sql.NullString{}
+		slug := sql.NullString{}
 		row = thread.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title, votes
 										from threads where slug=$1`,
 			SLUG)
-		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title, &thr.Votes)
-		if swag.Valid {
-			thr.Slug = swag.String
+		err = row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &slug, &thr.Title, &thr.Votes)
+		if slug.Valid {
+			thr.Slug = slug.String
 		}
 		if err != nil {
 			result := user.ErrMsg{Message: "Can't find thread by slug: "}
@@ -229,10 +229,10 @@ func (thread *Thread) Update(ctx *fasthttp.RequestCtx) {
 	query += " RETURNING id, title, author, forum, message, votes, slug, created;"
 
 	row := thread.DB.QueryRow(context.Background(), query, args...)
-	swag := sql.NullString{}
-	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swag, &thr.Created)
-	if swag.Valid {
-		thr.Slug = swag.String
+	slug := sql.NullString{}
+	err = row.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &slug, &thr.Created)
+	if slug.Valid {
+		thr.Slug = slug.String
 	}
 	if thr.ID == 0 {
 		errMsg := &user.ErrMsg{Message: "Can't find thread by slug: "}
@@ -441,11 +441,11 @@ func (thread *Thread) Vote(ctx *fasthttp.RequestCtx) {
 	id, err := strconv.Atoi(threadSlug)
 	thr := &ResThread{}
 	if err == nil {
-		swag := sql.NullString{}
+		slug := sql.NullString{}
 		row = thread.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title from threads where id=$1`, id)
-		row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &swag, &thr.Title)
-		if swag.Valid {
-			thr.Slug = swag.String
+		row.Scan(&thr.Author, &thr.Created, &thr.Forum, &thr.ID, &thr.Message, &slug, &thr.Title)
+		if slug.Valid {
+			thr.Slug = slug.String
 		}
 	} else {
 		id = -1

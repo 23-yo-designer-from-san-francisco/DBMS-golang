@@ -113,7 +113,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 CREATE UNLOGGED TABLE public.forum_users (
                                              user_nickname public.citext NOT NULL COLLATE pg_catalog."C",
-                                             forum_swag public.citext NOT NULL COLLATE pg_catalog."C"
+                                             forum_slug public.citext NOT NULL COLLATE pg_catalog."C"
 );
 ALTER TABLE public.forum_users OWNER TO test;
 CREATE UNLOGGED TABLE public.forums (
@@ -213,7 +213,7 @@ ALTER TABLE ONLY public.votes
     ADD CONSTRAINT votes_user_thread_unique UNIQUE (thread, nickname);
 
 
-CREATE UNIQUE INDEX uidx_forum_users_user_id_forum_id ON public.forum_users USING btree (user_nickname, forum_swag);
+CREATE UNIQUE INDEX uidx_forum_users_user_id_forum_id ON public.forum_users USING btree (user_nickname, forum_slug);
 CREATE UNIQUE INDEX uidx_forums_slug ON public.forums USING btree (slug);
 CREATE UNIQUE INDEX uidx_forums_user ON public.forums USING btree ("user");
 CREATE INDEX idx_post_threadid_created_id ON public.posts USING btree (thread, created, id);
@@ -240,7 +240,7 @@ CREATE TRIGGER edit_post AFTER UPDATE ON public.posts FOR EACH ROW EXECUTE FUNCT
 CREATE TRIGGER vote_post AFTER INSERT ON public.votes FOR EACH ROW EXECUTE FUNCTION public.vote_post();
 CREATE TRIGGER vote_update AFTER UPDATE ON public.votes FOR EACH ROW EXECUTE FUNCTION public.vote_update();
 ALTER TABLE ONLY public.forum_users
-    ADD CONSTRAINT forum_users_forum_slug_fk FOREIGN KEY (forum_swag) REFERENCES public.forums(slug);
+    ADD CONSTRAINT forum_users_forum_slug_fk FOREIGN KEY (forum_slug) REFERENCES public.forums(slug);
 ALTER TABLE ONLY public.forum_users
     ADD CONSTRAINT forum_users_user_nickname_fk FOREIGN KEY (user_nickname) REFERENCES public.users(nickname);
 ALTER TABLE ONLY public.forums

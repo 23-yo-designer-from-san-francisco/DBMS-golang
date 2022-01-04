@@ -115,14 +115,13 @@ func (forum *Forum) Details(ctx *fasthttp.RequestCtx) {
 }
 
 func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
-	SLUG := ctx.UserValue("slug").(string) // SWAG форума, который точно должен быть
+	SLUG := ctx.UserValue("slug").(string) // SLUG форума, который точно должен быть
 	thr := &ThreadReq{}
 	easyjson.Unmarshal(ctx.PostBody(), thr)
 
-	var SWAG string
-	err := forum.DB.QueryRow(context.Background(), `SELECT slug FROM forums WHERE slug=$1`, SLUG).Scan(&SWAG)
+	err := forum.DB.QueryRow(context.Background(), `SELECT slug FROM forums WHERE slug=$1`, SLUG).Scan(&SLUG)
 	if err == pgx.ErrNoRows {
-		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find thread forum by slug: %s", SWAG)}
+		errMsg := &user.ErrMsg{Message: fmt.Sprintf("Can't find thread forum by slug: %s", SLUG)}
 		response, _ := easyjson.Marshal(errMsg)
 		ctx.SetBody(response)
 		ctx.SetStatusCode(404)
@@ -134,7 +133,7 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		VALUES($1, $2, $3, $4, $5, CASE WHEN $6 <> '' THEN $6 END) RETURNING id`,
 		thr.Title,
 		thr.Author,
-		SWAG,
+		SLUG,
 		thr.Message,
 		thr.Created,
 		thr.Slug,
@@ -144,13 +143,13 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 		switch err.Code {
 		case "23505":
 			thread := &ThreadReq{}
-			swag := sql.NullString{}
+			slug := sql.NullString{}
 			forum.DB.QueryRow(context.Background(), "SELECT author, created, forum, id, message, slug, title "+
 				"FROM threads "+
 				"WHERE slug=$1", thr.Slug).Scan(&thread.Author,
-				&thread.Created, &thread.Forum, &thread.ID, &thread.Message, &swag, &thread.Title)
-			if swag.Valid {
-				thread.Slug = swag.String
+				&thread.Created, &thread.Forum, &thread.ID, &thread.Message, &slug, &thread.Title)
+			if slug.Valid {
+				thread.Slug = slug.String
 			}
 			res, _ := easyjson.Marshal(thread)
 			ctx.SetBody(res)
@@ -166,8 +165,8 @@ func (forum *Forum) CreateThread(ctx *fasthttp.RequestCtx) {
 			return
 		}
 	}
-	thr.Forum = SWAG
-	userQuery := forum.DB.QueryRow(context.Background(), `INSERT INTO forum_users (user_nickname, forum_swag) VALUES ($1, $2)`, thr.Author, thr.Forum)
+	thr.Forum = SLUG
+	userQuery := forum.DB.QueryRow(context.Background(), `INSERT INTO forum_users (user_nickname, forum_slug) VALUES ($1, $2)`, thr.Author, thr.Forum)
 	userQuery.Scan()
 	res, _ := easyjson.Marshal(thr)
 	ctx.SetBody(res)
@@ -200,11 +199,11 @@ func (forum *Forum) Users(ctx *fasthttp.RequestCtx) {
 		queryOpts += " DESC "
 	}
 	if len(limit) != 0 {
-		queryOpts += " LIMIT " + limit //TODO=Сделать через $
+		queryOpts += " LIMIT " + limit
 	}
 
 	rows, _ := forum.DB.Query(context.Background(), `SELECT about, email, fullname, nickname FROM users u
-										JOIN forum_users fu ON fu.user_nickname = u.nickname WHERE forum_swag = $1`+queryOpts, SLUG)
+										JOIN forum_users fu ON fu.user_nickname = u.nickname WHERE forum_slug = $1`+queryOpts, SLUG)
 
 	defer rows.Close()
 	found := false
@@ -271,10 +270,10 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 		thr := &ThreadReq{}
 		for rows.Next() {
 			thr := &ThreadReq{}
-			swagga := sql.NullString{}
-			rows.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swagga, &thr.Created)
-			if swagga.Valid {
-				thr.Slug = swagga.String
+			slug := sql.NullString{}
+			rows.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &slug, &thr.Created)
+			if slug.Valid {
+				thr.Slug = slug.String
 			}
 			threads = append(threads, *thr)
 		}
@@ -301,14 +300,14 @@ func (forum *Forum) GetThreads(ctx *fasthttp.RequestCtx) {
 	}
 
 	thr := &ThreadReq{}
-	swag := sql.NullString{}
+	slug := sql.NullString{}
 	usr, _ := forum.DB.Query(context.Background(), "SELECT id, title, author, forum, message, votes, slug, created "+
 		"FROM threads WHERE forum=$1", SLUG)
 	defer usr.Close()
 	usr.Next()
-	usr.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &swag, &thr.Created)
-	if swag.Valid {
-		thr.Slug = swag.String
+	usr.Scan(&thr.ID, &thr.Title, &thr.Author, &thr.Forum, &thr.Message, &thr.Votes, &slug, &thr.Created)
+	if slug.Valid {
+		thr.Slug = slug.String
 	}
 
 	if thr.ID == 0 {

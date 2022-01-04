@@ -101,22 +101,22 @@ func (post *Post) Details(ctx *fasthttp.RequestCtx) {
 
 	if strings.Contains(related, "thread") {
 		resultPost.Thread = &Thread{}
-		swag := sql.NullString{}
+		slug := sql.NullString{}
 		thread := post.DB.QueryRow(context.Background(), `SELECT author, created, forum, id, message, slug, title, votes FROM threads WHERE id=$1`, resultPost.Post.Thread)
 		thread.Scan(&resultPost.Thread.Author, &resultPost.Thread.Created, &resultPost.Thread.Forum, &resultPost.Thread.ID, &resultPost.Thread.Message,
-			&swag, &resultPost.Thread.Title, &resultPost.Thread.Votes)
-		if swag.Valid {
-			resultPost.Thread.Slug = swag.String
+			&slug, &resultPost.Thread.Title, &resultPost.Thread.Votes)
+		if slug.Valid {
+			resultPost.Thread.Slug = slug.String
 		}
 	}
 
 	if strings.Contains(related, "forum") {
 		resultPost.Forum = &Forum{}
-		swag := sql.NullString{}
+		slug := sql.NullString{}
 		forum := post.DB.QueryRow(context.Background(), `SELECT posts, slug, threads, title, "user" FROM forums WHERE slug=$1`, resultPost.Post.Forum)
-		forum.Scan(&resultPost.Forum.Posts, &swag, &resultPost.Forum.Threads, &resultPost.Forum.Title, &resultPost.Forum.User)
-		if swag.Valid {
-			resultPost.Forum.Slug = swag.String
+		forum.Scan(&resultPost.Forum.Posts, &slug, &resultPost.Forum.Threads, &resultPost.Forum.Title, &resultPost.Forum.User)
+		if slug.Valid {
+			resultPost.Forum.Slug = slug.String
 		}
 	}
 	res, _ := easyjson.Marshal(resultPost)
