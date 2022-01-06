@@ -13,7 +13,7 @@ BEGIN
         SELECT path FROM posts WHERE id = NEW.parent INTO parent_path;
         SELECT thread FROM posts WHERE id = parent_path[1] INTO first_parent_thread;
         IF NOT FOUND OR first_parent_thread <> NEW.thread THEN
-            RAISE EXCEPTION 'Parent post was created in another thread';-- USING ERRCODE = '666';
+            RAISE EXCEPTION 'Parent post was created in another thread' USING ERRCODE = '42704';
         END IF;
         NEW.path := NEW.path || parent_path || NEW.id;
     END IF;
