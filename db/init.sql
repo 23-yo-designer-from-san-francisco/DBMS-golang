@@ -227,7 +227,7 @@ CREATE INDEX idx_post_threadid_id_parentnull_id ON public.posts USING btree (thr
 CREATE INDEX idx_post_threadid_path ON public.posts USING btree (thread, path);
 CREATE INDEX idx_posts_id ON public.posts USING hash (id);
 
-CREATE INDEX idx_threads_created ON public.threads USING hash (created);
+CREATE INDEX idx_threads_created ON public.threads (created); -- Can't work
 CREATE INDEX idx_threads_slug_hash ON public.threads USING hash (slug);
 CREATE INDEX idx_threads_forum_created ON public.threads USING btree (forum, created);
 
