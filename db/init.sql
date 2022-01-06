@@ -12,7 +12,7 @@ BEGIN
     ELSE
         SELECT path FROM posts WHERE id = NEW.parent INTO parent_path;
         SELECT thread FROM posts WHERE id = parent_path[1] INTO first_parent_thread;
-        IF NOT FOUND OR first_parent_thread <> NEW.thread THEN
+        IF NOT FOUND OR first_parent_thread != NEW.thread THEN
             RAISE EXCEPTION 'Parent post was created in another thread' USING ERRCODE = '42704';
         END IF;
         NEW.path := NEW.path || parent_path || NEW.id;
@@ -51,7 +51,7 @@ DECLARE
     parent_path      integer[];
     parent_thread_id integer;
 BEGIN
-    IF NEW.parent is NULL THEN
+    IF NEW.parent IS NULL THEN
         NEW.path := NEW.path || NEW.id;
     ELSE
         SELECT path, thread
@@ -59,8 +59,8 @@ BEGIN
         WHERE id = NEW.parent
         INTO parent_path, parent_thread_id;
         IF parent_thread_id != NEW.thread THEN
-            raise exception 'Path error';
-        end if;
+            raise exception 'Path does not exist';
+        END IF;
         NEW.path := NEW.path || parent_path || NEW.id;
     END IF;
     RETURN NEW;
