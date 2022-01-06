@@ -12,7 +12,7 @@ RUN apt -y update
 
 RUN apt install -y postgresql-14 --no-install-recommends
 
-RUN cd /tmp && wget https://golang.org/dl/go1.17.5.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.17.5.linux-amd64.tar.gz
+RUN cd /tmp && wget https://golang.org/dl/go1.17.5.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.17.5.linux-arm64.tar.gz
 USER postgres
 
 RUN /etc/init.d/postgresql start &&\
