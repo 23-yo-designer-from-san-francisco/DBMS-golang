@@ -221,7 +221,7 @@ CREATE UNIQUE INDEX uidx_threads_slug ON public.threads USING btree (slug);
 CREATE UNIQUE INDEX uidx_user_id ON public.users USING btree (id);
 CREATE UNIQUE INDEX uidx_users_email ON public.users USING btree (email);
 
--- CREATE INDEX idx_post_threadid_created_id ON public.posts USING btree (thread, created, id, parent, path);
+CREATE INDEX idx_post_threadid_created_id ON public.posts USING btree (thread, created, id, parent, path);
 -- CREATE INDEX idx_post_threadid_path ON public.posts USING btree (thread, path);
 -- CREATE INDEX idx_posts_id ON public.posts USING hash (id);
 
