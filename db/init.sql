@@ -225,11 +225,11 @@ CREATE INDEX idx_post_threadid_created_id ON public.posts USING btree (thread, c
 CREATE INDEX idx_post_threadid_path ON public.posts USING btree (thread, path);
 CREATE INDEX idx_posts_id ON public.posts USING hash (id);
 
-CREATE INDEX idx_threads_slug_hash ON public.threads USING hash (slug);
+-- CREATE INDEX idx_threads_slug_hash ON public.threads USING hash (slug);
 CREATE INDEX idx_threads_forum_created ON public.threads USING btree (forum, created);
 
-CREATE INDEX idx_forums_slug_hash ON public.forums USING hash (slug);
-CREATE INDEX idx_forums_users_foreign ON public.forums USING hash ("user");
+-- CREATE INDEX idx_forums_slug_hash ON public.forums USING hash (slug);
+-- CREATE INDEX idx_forums_users_foreign ON public.forums USING hash ("user");
 
 
 CREATE TRIGGER before_insert_post BEFORE INSERT ON public.posts FOR EACH ROW EXECUTE FUNCTION public.insert_post();
