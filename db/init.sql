@@ -7,7 +7,7 @@ DECLARE
     parent_path         bigint[];
     first_parent_thread integer;
 BEGIN
-    IF (NEW.parent IS NULL) THEN
+    IF NEW.parent IS NULL THEN
         NEW.path := array_append(NEW.path, NEW.id);
     ELSE
         SELECT path FROM posts WHERE id = NEW.parent INTO parent_path;
@@ -17,7 +17,7 @@ BEGIN
         END IF;
         NEW.path := NEW.path || parent_path || NEW.id;
     END IF;
-    UPDATE forums SET posts=posts + 1 WHERE forums.slug = NEW.forum;
+    UPDATE forums SET posts = posts + 1 WHERE forums.slug = NEW.forum;
     RETURN NEW;
 END
 $$;
@@ -48,10 +48,10 @@ CREATE FUNCTION public.path() RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 DECLARE
-    parent_path      INT[];
-    parent_thread_id INT;
+    parent_path      integer[];
+    parent_thread_id integer;
 BEGIN
-    IF (NEW.parent is null) THEN
+    IF NEW.parent is NULL THEN
         NEW.path := NEW.path || NEW.id;
     ELSE
         SELECT path, thread
@@ -71,11 +71,11 @@ CREATE FUNCTION public.edit_post() RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF (NEW.message = OLD.message)
+    IF NEW.message = OLD.message
     THEN RETURN NULL;
     END IF;
     UPDATE posts SET isedited = TRUE
-    WHERE id=NEW.id;
+    WHERE id = NEW.id;
     RETURN NULL;
 END;
 $$;
