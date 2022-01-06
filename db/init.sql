@@ -4,20 +4,20 @@ CREATE FUNCTION public.insert_post() RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 DECLARE
-    parent_path         BIGINT[];
-    first_parent_thread INT;
+    parent_path         bigint[];
+    first_parent_thread integer;
 BEGIN
-    IF (NEW.parent IS NULL) THEN
+    IF NEW.parent IS NULL THEN
         NEW.path := array_append(NEW.path, NEW.id);
     ELSE
         SELECT path FROM posts WHERE id = NEW.parent INTO parent_path;
         SELECT thread FROM posts WHERE id = parent_path[1] INTO first_parent_thread;
-        IF NOT FOUND OR first_parent_thread <> NEW.thread THEN
-            RAISE EXCEPTION 'Parent post was created in another thread' USING ERRCODE = '666';
+        IF NOT FOUND OR first_parent_thread != NEW.thread THEN
+            RAISE EXCEPTION 'Parent post was created in another thread' USING ERRCODE = '42704';
         END IF;
         NEW.path := NEW.path || parent_path || NEW.id;
     END IF;
-    UPDATE forums SET posts=posts + 1 WHERE forums.slug = NEW.forum;
+    UPDATE forums SET posts = posts + 1 WHERE forums.slug = NEW.forum;
     RETURN NEW;
 END
 $$;
@@ -48,10 +48,10 @@ CREATE FUNCTION public.path() RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 DECLARE
-    parent_path      INT[];
-    parent_thread_id INT;
+    parent_path      integer[];
+    parent_thread_id integer;
 BEGIN
-    IF (NEW.parent is null) THEN
+    IF NEW.parent IS NULL THEN
         NEW.path := NEW.path || NEW.id;
     ELSE
         SELECT path, thread
@@ -59,8 +59,8 @@ BEGIN
         WHERE id = NEW.parent
         INTO parent_path, parent_thread_id;
         IF parent_thread_id != NEW.thread THEN
-            raise exception 'Path error';
-        end if;
+            raise exception 'Path does not exist';
+        END IF;
         NEW.path := NEW.path || parent_path || NEW.id;
     END IF;
     RETURN NEW;
@@ -71,11 +71,11 @@ CREATE FUNCTION public.edit_post() RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 BEGIN
-    IF (NEW.message = OLD.message)
+    IF NEW.message = OLD.message
     THEN RETURN NULL;
     END IF;
     UPDATE posts SET isedited = TRUE
-    WHERE id=NEW.id;
+    WHERE id = NEW.id;
     RETURN NULL;
 END;
 $$;
@@ -143,7 +143,7 @@ CREATE UNLOGGED TABLE public.posts (
                                        forum public.citext COLLATE pg_catalog."C",
                                        thread integer,
                                        created timestamp with time zone DEFAULT now(),
-                                       path integer[]
+                                       path bigint[]
 );
 ALTER TABLE public.posts OWNER TO test;
 CREATE SEQUENCE public.posts_id_seq
@@ -212,27 +212,16 @@ ALTER TABLE ONLY public.users
 ALTER TABLE ONLY public.votes
     ADD CONSTRAINT votes_user_thread_unique UNIQUE (thread, nickname);
 
+CREATE UNIQUE INDEX uidx_forum_users_user_id_forum_id ON public.forum_users (user_nickname, forum_slug);
+CREATE UNIQUE INDEX uidx_forums_slug ON public.forums (slug);
+CREATE UNIQUE INDEX uidx_forums_user ON public.forums ("user");
+CREATE UNIQUE INDEX uidx_users_nickname ON public.users (nickname);
+CREATE UNIQUE INDEX uidx_threads_slug ON public.threads (slug);
+CREATE UNIQUE INDEX uidx_user_id ON public.users (id);
+CREATE UNIQUE INDEX uidx_users_email ON public.users (email);
 
-CREATE UNIQUE INDEX uidx_forum_users_user_id_forum_id ON public.forum_users USING btree (user_nickname, forum_slug);
-CREATE UNIQUE INDEX uidx_forums_slug ON public.forums USING btree (slug);
-CREATE UNIQUE INDEX uidx_forums_user ON public.forums USING btree ("user");
-CREATE INDEX idx_post_threadid_created_id ON public.posts USING btree (thread, created, id);
-CREATE INDEX idx_post_threadid_id_parentid ON public.posts USING btree (thread, id, parent);
-CREATE INDEX idx_post_threadid_id_parentnull_id ON public.posts USING btree (thread, id) WHERE (parent IS NULL);
-CREATE INDEX idx_post_threadid_path ON public.posts USING btree (thread, path);
-CREATE INDEX idx_posts_id ON public.posts USING hash (id);
-CREATE INDEX idx_threads_created ON public.threads USING hash (created);
-CREATE INDEX idx_threads_forum_created ON public.threads USING btree (forum, created);
-CREATE INDEX idx_users_id ON public.users USING hash (id);
-CREATE UNIQUE INDEX uidx_users_nickname ON public.users USING btree (nickname);
-CREATE INDEX idx_forums ON public.forums USING btree (slug, title, "user", posts, threads);
-CREATE INDEX idx_forums_slug_hash ON public.forums USING hash (slug);
-CREATE INDEX idx_forums_users_foreign ON public.forums USING hash ("user");
-CREATE INDEX idx_threads_slug_hash ON public.threads USING hash (slug);
-CREATE UNIQUE INDEX uidx_threads_slug ON public.threads USING btree (slug);
-CREATE UNIQUE INDEX uidx_user_id ON public.users USING btree (id);
-CREATE UNIQUE INDEX uidx_users_email ON public.users USING btree (email);
-
+CREATE INDEX idx_post_threadid_created_id ON public.posts (thread, created, id, parent, path);
+CREATE INDEX idx_threads_forum_created ON public.threads (forum, created);
 
 CREATE TRIGGER before_insert_post BEFORE INSERT ON public.posts FOR EACH ROW EXECUTE FUNCTION public.insert_post();
 CREATE TRIGGER count_forum_threads AFTER INSERT ON public.threads FOR EACH ROW EXECUTE FUNCTION public.count_forum_threads();
