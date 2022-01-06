@@ -4,8 +4,8 @@ CREATE FUNCTION public.insert_post() RETURNS trigger
     LANGUAGE plpgsql
 AS $$
 DECLARE
-    parent_path         BIGINT[];
-    first_parent_thread INT;
+    parent_path         bigint[];
+    first_parent_thread integer;
 BEGIN
     IF (NEW.parent IS NULL) THEN
         NEW.path := array_append(NEW.path, NEW.id);
@@ -143,7 +143,7 @@ CREATE UNLOGGED TABLE public.posts (
                                        forum public.citext COLLATE pg_catalog."C",
                                        thread integer,
                                        created timestamp with time zone DEFAULT now(),
-                                       path integer[]
+                                       path bigint[]
 );
 ALTER TABLE public.posts OWNER TO test;
 CREATE SEQUENCE public.posts_id_seq
@@ -225,7 +225,6 @@ CREATE INDEX idx_threads_created ON public.threads USING hash (created);
 CREATE INDEX idx_threads_forum_created ON public.threads USING btree (forum, created);
 CREATE INDEX idx_users_id ON public.users USING hash (id);
 CREATE UNIQUE INDEX uidx_users_nickname ON public.users USING btree (nickname);
-CREATE INDEX idx_forums ON public.forums USING btree (slug, title, "user", posts, threads);
 CREATE INDEX idx_forums_slug_hash ON public.forums USING hash (slug);
 CREATE INDEX idx_forums_users_foreign ON public.forums USING hash ("user");
 CREATE INDEX idx_threads_slug_hash ON public.threads USING hash (slug);
