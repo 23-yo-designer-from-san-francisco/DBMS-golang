@@ -212,25 +212,16 @@ ALTER TABLE ONLY public.users
 ALTER TABLE ONLY public.votes
     ADD CONSTRAINT votes_user_thread_unique UNIQUE (thread, nickname);
 
+CREATE UNIQUE INDEX uidx_forum_users_user_id_forum_id ON public.forum_users (user_nickname, forum_slug);
+CREATE UNIQUE INDEX uidx_forums_slug ON public.forums (slug);
+CREATE UNIQUE INDEX uidx_forums_user ON public.forums ("user");
+CREATE UNIQUE INDEX uidx_users_nickname ON public.users (nickname);
+CREATE UNIQUE INDEX uidx_threads_slug ON public.threads (slug);
+CREATE UNIQUE INDEX uidx_user_id ON public.users (id);
+CREATE UNIQUE INDEX uidx_users_email ON public.users (email);
 
-CREATE UNIQUE INDEX uidx_forum_users_user_id_forum_id ON public.forum_users USING btree (user_nickname, forum_slug);
-CREATE UNIQUE INDEX uidx_forums_slug ON public.forums USING btree (slug);
-CREATE UNIQUE INDEX uidx_forums_user ON public.forums USING btree ("user");
-CREATE UNIQUE INDEX uidx_users_nickname ON public.users USING btree (nickname);
-CREATE UNIQUE INDEX uidx_threads_slug ON public.threads USING btree (slug);
-CREATE UNIQUE INDEX uidx_user_id ON public.users USING btree (id);
-CREATE UNIQUE INDEX uidx_users_email ON public.users USING btree (email);
-
-CREATE INDEX idx_post_threadid_created_id ON public.posts USING btree (thread, created, id, parent, path);
--- CREATE INDEX idx_post_threadid_path ON public.posts USING btree (thread, path);
--- CREATE INDEX idx_posts_id ON public.posts USING hash (id);
-
--- CREATE INDEX idx_threads_slug_hash ON public.threads USING hash (slug);
-CREATE INDEX idx_threads_forum_created ON public.threads USING btree (forum, created);
-
--- CREATE INDEX idx_forums_slug_hash ON public.forums USING hash (slug);
--- CREATE INDEX idx_forums_users_foreign ON public.forums USING hash ("user");
-
+CREATE INDEX idx_post_threadid_created_id ON public.posts (thread, created, id, parent, path);
+CREATE INDEX idx_threads_forum_created ON public.threads (forum, created);
 
 CREATE TRIGGER before_insert_post BEFORE INSERT ON public.posts FOR EACH ROW EXECUTE FUNCTION public.insert_post();
 CREATE TRIGGER count_forum_threads AFTER INSERT ON public.threads FOR EACH ROW EXECUTE FUNCTION public.count_forum_threads();
